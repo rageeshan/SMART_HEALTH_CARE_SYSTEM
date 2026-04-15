@@ -1,26 +1,21 @@
+import express from "express";
 import dotenv from "dotenv";
+import cors from "cors";
+
+import connectDB from "./src/config/db.js";
+import authRoutes from "./src/routes/authRoutes.js";
+
 dotenv.config();
 
-import express from "express";
-import cors from "cors";
-import { connectDB } from "./config/db.js";
-
-const PORT = process.env.PORT || 5002;
+connectDB();
 
 const app = express();
 
 app.use(cors());
-
 app.use(express.json());
 
-// app.listen(process.env.PORT, () => {
-//   console.log(`Server running on port ${process.env.PORT}`);
-// });
+app.use("/api/auth", authRoutes);
 
-// ROUTES
-
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log("Server started in port", PORT);
-  });
+app.listen(process.env.PORT, () => {
+  console.log(`Auth Service running on port ${process.env.PORT}`);
 });
