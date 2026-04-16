@@ -1,11 +1,14 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
-export const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("MongoDB connected Successfully!");
-  } catch (error) {
-    console.error("Database connection failed or not found!", error);
-    process.exit(1); //1 means exit from failiure
+const connectDB = async () => {
+  const mongoUri = process.env.MONGO_URI;
+
+  if (!mongoUri) {
+    throw new Error("MONGO_URI is not set in environment variables.");
   }
+
+  await mongoose.connect(mongoUri);
+  console.log("Telemedicine DB connected");
 };
+
+module.exports = connectDB;
