@@ -3,14 +3,7 @@ import Patient from "../models/patient.js";
 // Create patient profile
 export const createPatientProfile = async (req, res) => {
   try {
-    const { userId, role, email } = req.user;
-
-    if (role !== "patient") {
-      return res.status(403).json({
-        success: false,
-        message: "Only patients can create their profile",
-      });
-    }
+    const { userId, email } = req.user;
 
     if (!email) {
       return res.status(400).json({
@@ -96,20 +89,28 @@ export const getMyProfile = async (req, res) => {
 // Update logged-in patient's profile
 export const updateMyProfile = async (req, res) => {
   try {
-    const { userId, role } = req.user;
+    const { userId } = req.user;
 
-    if (role !== "patient") {
-      return res.status(403).json({
-        success: false,
-        message: "Only patients can update their profile",
-      });
-    }
+    const allowedUpdates = {
+      fullName: req.body.fullName,
+      phone: req.body.phone,
+      dob: req.body.dob,
+      gender: req.body.gender,
+      address: req.body.address,
+      bloodGroup: req.body.bloodGroup,
+      allergies: req.body.allergies,
+      emergencyContact: req.body.emergencyContact,
+    };
 
-    const updates = { ...req.body };
+    Object.keys(allowedUpdates).forEach((key) => {
+      if (allowedUpdates[key] === undefined) {
+        delete allowedUpdates[key];
+      }
+    });
 
     const updatedPatient = await Patient.findOneAndUpdate(
       { userId },
-      updates,
+      allowedUpdates,
       { new: true, runValidators: true }
     );
 
@@ -134,18 +135,11 @@ export const updateMyProfile = async (req, res) => {
   }
 };
 
-// Add medical history (doctor only)
+// Add medical history
 export const addMedicalHistory = async (req, res) => {
   try {
-    const { role, userId: doctorId } = req.user;
+    const { userId: doctorId } = req.user;
     const { patientId } = req.params;
-
-    if (role !== "doctor") {
-      return res.status(403).json({
-        success: false,
-        message: "Only doctors can add medical history",
-      });
-    }
 
     const patient = await Patient.findById(patientId);
 
@@ -178,18 +172,10 @@ export const addMedicalHistory = async (req, res) => {
   }
 };
 
-// Update medical history (doctor only)
+// Update medical history
 export const updateMedicalHistory = async (req, res) => {
   try {
-    const { role } = req.user;
     const { patientId, recordId } = req.params;
-
-    if (role !== "doctor") {
-      return res.status(403).json({
-        success: false,
-        message: "Only doctors can update medical history",
-      });
-    }
 
     const patient = await Patient.findById(patientId);
 
@@ -229,6 +215,7 @@ export const updateMedicalHistory = async (req, res) => {
   }
 };
 
+// Get patient by id
 export const getPatientById = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -243,7 +230,6 @@ export const getPatientById = async (req, res) => {
       });
     }
 
-    // 🔐 Access control
     if (role === "patient" && patient.userId !== userId) {
       return res.status(403).json({
         success: false,
@@ -265,18 +251,14 @@ export const getPatientById = async (req, res) => {
   }
 };
 
+// Get my medical history
 export const getMyMedicalHistory = async (req, res) => {
   try {
-    const { userId, role } = req.user;
+    const { userId } = req.user;
 
-    if (role !== "patient") {
-      return res.status(403).json({
-        success: false,
-        message: "Only patients can view their own medical history",
-      });
-    }
-
-    const patient = await Patient.findOne({ userId }).select("medicalHistory fullName email");
+    const patient = await Patient.findOne({ userId }).select(
+      "medicalHistory fullName email"
+    );
 
     if (!patient) {
       return res.status(404).json({
@@ -304,12 +286,15 @@ export const getMyMedicalHistory = async (req, res) => {
   }
 };
 
+// Get patient medical history
 export const getPatientMedicalHistory = async (req, res) => {
   try {
     const { patientId } = req.params;
     const { userId, role } = req.user;
 
-    const patient = await Patient.findById(patientId).select("userId fullName email medicalHistory");
+    const patient = await Patient.findById(patientId).select(
+      "userId fullName email medicalHistory"
+    );
 
     if (!patient) {
       return res.status(404).json({
@@ -344,17 +329,10 @@ export const getPatientMedicalHistory = async (req, res) => {
   }
 };
 
+// Delete medical history
 export const deleteMedicalHistory = async (req, res) => {
   try {
     const { patientId, recordId } = req.params;
-    const { role } = req.user;
-
-    if (role !== "doctor") {
-      return res.status(403).json({
-        success: false,
-        message: "Only doctors can delete medical history",
-      });
-    }
 
     const patient = await Patient.findById(patientId);
 
@@ -374,7 +352,7 @@ export const deleteMedicalHistory = async (req, res) => {
       });
     }
 
-    record.deleteOne(); // remove subdocument
+    record.deleteOne();
     await patient.save();
 
     return res.status(200).json({
