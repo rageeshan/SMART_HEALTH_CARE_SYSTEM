@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router-dom";
+import { SymptomCheckPage, SymptomHistoryPage } from "./pages/SymptomCheckPage.jsx";
 
-const API_BASE_URL =
+const PAYMENT_API =
   import.meta.env.VITE_PAYMENT_API_URL || "http://localhost:5002/api/payments";
 
 const INITIAL_FORM = {
@@ -33,7 +34,7 @@ function PaymentForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/stripe/checkout`, {
+      const response = await fetch(`${PAYMENT_API}/stripe/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -120,7 +121,7 @@ function PaymentResult({ title, tone }) {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/stripe/session/${encodeURIComponent(sessionId)}/verify`
+          `${PAYMENT_API}/stripe/session/${encodeURIComponent(sessionId)}/verify`
         );
         const data = await response.json();
 
@@ -172,7 +173,7 @@ function PaymentStatusPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API_BASE_URL}/my?patientId=${encodeURIComponent(patientId)}`);
+      const response = await fetch(`${PAYMENT_API}/my?patientId=${encodeURIComponent(patientId)}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || "Failed to load payments");
@@ -232,12 +233,18 @@ function PaymentStatusPage() {
 function AppLayout() {
   return (
     <main className="min-h-screen px-4 py-10">
-      <nav className="mx-auto mb-6 flex max-w-3xl gap-3 text-sm">
+      <nav className="mx-auto mb-6 flex max-w-3xl flex-wrap gap-3 text-sm">
         <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/">
-          New Payment
+          Payments
         </Link>
         <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/payment/status">
-          Payment Status
+          Payment status
+        </Link>
+        <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/symptoms">
+          Symptom check
+        </Link>
+        <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/symptoms/history">
+          Symptom history
         </Link>
       </nav>
 
@@ -246,6 +253,8 @@ function AppLayout() {
         <Route path="/payment/success" element={<PaymentResult title="Payment Successful" tone="text-emerald-600" />} />
         <Route path="/payment/cancel" element={<PaymentResult title="Payment Cancelled" tone="text-amber-600" />} />
         <Route path="/payment/status" element={<PaymentStatusPage />} />
+        <Route path="/symptoms" element={<SymptomCheckPage />} />
+        <Route path="/symptoms/history" element={<SymptomHistoryPage />} />
       </Routes>
     </main>
   );
