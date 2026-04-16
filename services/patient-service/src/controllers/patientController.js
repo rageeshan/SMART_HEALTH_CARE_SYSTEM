@@ -228,3 +228,165 @@ export const updateMedicalHistory = async (req, res) => {
     });
   }
 };
+
+export const getPatientById = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { userId, role } = req.user;
+
+    const patient = await Patient.findById(patientId);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    // 🔐 Access control
+    if (role === "patient" && patient.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Patient fetched successfully",
+      data: patient,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch patient",
+      error: error.message,
+    });
+  }
+};
+
+export const getMyMedicalHistory = async (req, res) => {
+  try {
+    const { userId, role } = req.user;
+
+    if (role !== "patient") {
+      return res.status(403).json({
+        success: false,
+        message: "Only patients can view their own medical history",
+      });
+    }
+
+    const patient = await Patient.findOne({ userId }).select("medicalHistory fullName email");
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient profile not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Medical history fetched successfully",
+      data: {
+        patientId: patient._id,
+        fullName: patient.fullName,
+        email: patient.email,
+        medicalHistory: patient.medicalHistory,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch medical history",
+      error: error.message,
+    });
+  }
+};
+
+export const getPatientMedicalHistory = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { userId, role } = req.user;
+
+    const patient = await Patient.findById(patientId).select("userId fullName email medicalHistory");
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    if (role === "patient" && patient.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Patient medical history fetched successfully",
+      data: {
+        patientId: patient._id,
+        fullName: patient.fullName,
+        email: patient.email,
+        medicalHistory: patient.medicalHistory,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch patient medical history",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteMedicalHistory = async (req, res) => {
+  try {
+    const { patientId, recordId } = req.params;
+    const { role } = req.user;
+
+    if (role !== "doctor") {
+      return res.status(403).json({
+        success: false,
+        message: "Only doctors can delete medical history",
+      });
+    }
+
+    const patient = await Patient.findById(patientId);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    const record = patient.medicalHistory.id(recordId);
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: "Medical history record not found",
+      });
+    }
+
+    record.deleteOne(); // remove subdocument
+    await patient.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Medical history deleted successfully",
+      data: patient,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete medical history",
+      error: error.message,
+    });
+  }
+};

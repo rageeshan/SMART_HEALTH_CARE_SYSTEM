@@ -9,4 +9,5 @@ app.use(express.json());
 
 app.use("/api/patients", patientRoutes);
 
+
 export default app;
