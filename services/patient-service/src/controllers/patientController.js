@@ -368,3 +368,80 @@ export const deleteMedicalHistory = async (req, res) => {
     });
   }
 };
+
+// Admin update patient profile
+export const adminUpdatePatientProfile = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    const allowedUpdates = {
+      fullName: req.body.fullName,
+      phone: req.body.phone,
+      dob: req.body.dob,
+      gender: req.body.gender,
+      address: req.body.address,
+      bloodGroup: req.body.bloodGroup,
+      allergies: req.body.allergies,
+      emergencyContact: req.body.emergencyContact,
+    };
+
+    Object.keys(allowedUpdates).forEach((key) => {
+      if (allowedUpdates[key] === undefined) {
+        delete allowedUpdates[key];
+      }
+    });
+
+    const updatedPatient = await Patient.findByIdAndUpdate(
+      patientId,
+      allowedUpdates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedPatient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Patient profile updated successfully by admin",
+      data: updatedPatient,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update patient profile",
+      error: error.message,
+    });
+  }
+};
+
+// Admin delete patient profile
+export const adminDeletePatientProfile = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    const deletedPatient = await Patient.findByIdAndDelete(patientId);
+
+    if (!deletedPatient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Patient profile deleted successfully by admin",
+      data: deletedPatient,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete patient profile",
+      error: error.message,
+    });
+  }
+};

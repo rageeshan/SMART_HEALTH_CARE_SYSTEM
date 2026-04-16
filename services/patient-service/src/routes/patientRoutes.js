@@ -12,6 +12,8 @@ import {
   getMyMedicalHistory,
   getPatientMedicalHistory,
   deleteMedicalHistory,
+  adminUpdatePatientProfile,
+  adminDeletePatientProfile,
 } from "../controllers/patientController.js";
 import {
   validateCreatePatientProfile,
@@ -47,8 +49,19 @@ router.get(
   getMyMedicalHistory
 );
 
-router.get("/:patientId", protect, getPatientById);
-router.get("/:patientId/medical-history", protect, getPatientMedicalHistory);
+router.get(
+  "/:patientId",
+  protect,
+  allowRoles("patient", "doctor", "admin"),
+  getPatientById
+);
+
+router.get(
+  "/:patientId/medical-history",
+  protect,
+  allowRoles("patient", "doctor", "admin"),
+  getPatientMedicalHistory
+);
 
 router.post(
   "/:patientId/medical-history",
@@ -61,7 +74,7 @@ router.post(
 router.put(
   "/:patientId/medical-history/:recordId",
   protect,
-  allowRoles("doctor"),
+  allowRoles("doctor", "admin"),
   validate(validateUpdateMedicalHistory),
   updateMedicalHistory
 );
@@ -69,8 +82,23 @@ router.put(
 router.delete(
   "/:patientId/medical-history/:recordId",
   protect,
-  allowRoles("doctor"),
+  allowRoles("doctor", "admin"),
   deleteMedicalHistory
+);
+
+router.put(
+  "/admin/:patientId",
+  protect,
+  allowRoles("admin"),
+  validate(validateUpdatePatientProfile),
+  adminUpdatePatientProfile
+);
+
+router.delete(
+  "/admin/:patientId",
+  protect,
+  allowRoles("admin"),
+  adminDeletePatientProfile
 );
 
 export default router;

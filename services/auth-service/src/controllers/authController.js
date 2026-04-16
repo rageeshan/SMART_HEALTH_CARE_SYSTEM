@@ -13,10 +13,20 @@ export const register = async (req, res) => {
   try {
     const { fullName, email, password, role } = req.body;
 
+    const allowedRoles = ["patient", "doctor"];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role. Only patient or doctor can register.",
+      });
+    }
+
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
       return res.status(400).json({
+        success: false,
         message: "User already exists",
       });
     }
@@ -49,7 +59,6 @@ export const register = async (req, res) => {
         role,
       },
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -71,6 +80,15 @@ export const verifyRegisterOtp = async (req, res) => {
       otp,
     } = req.body;
 
+    const allowedRoles = ["patient", "doctor"];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role. Only patient or doctor can register.",
+      });
+    }
+
     const otpRecord = await Otp.findOne({
       email,
       otp,
@@ -79,12 +97,14 @@ export const verifyRegisterOtp = async (req, res) => {
 
     if (!otpRecord) {
       return res.status(400).json({
+        success: false,
         message: "Invalid OTP",
       });
     }
 
     if (otpRecord.expiresAt < Date.now()) {
       return res.status(400).json({
+        success: false,
         message: "OTP Expired",
       });
     }
@@ -96,21 +116,27 @@ export const verifyRegisterOtp = async (req, res) => {
       email,
       password: hashedPassword,
       role,
+      isActive: true,
+      isVerified: role === "patient" ? true : false,
     });
 
     await Otp.deleteMany({ email });
 
     res.status(201).json({
       success: true,
-      message: "Registration successful",
+      message:
+        role === "doctor"
+          ? "Registration successful. Doctor account pending admin verification."
+          : "Registration successful",
       user: {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        isActive: user.isActive,
+        isVerified: user.isVerified,
       },
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -130,7 +156,22 @@ export const login = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
+        success: false,
         message: "User not found",
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: "Account has been deactivated by admin",
+      });
+    }
+
+    if (user.role === "doctor" && !user.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Doctor account is pending admin verification",
       });
     }
 
@@ -141,6 +182,7 @@ export const login = async (req, res) => {
 
     if (!validPassword) {
       return res.status(401).json({
+        success: false,
         message: "Invalid credentials",
       });
     }
@@ -168,7 +210,6 @@ export const login = async (req, res) => {
       message: "Login OTP sent to email",
       email,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -192,12 +233,14 @@ export const verifyLoginOtp = async (req, res) => {
 
     if (!otpRecord) {
       return res.status(400).json({
+        success: false,
         message: "Invalid OTP",
       });
     }
 
     if (otpRecord.expiresAt < Date.now()) {
       return res.status(400).json({
+        success: false,
         message: "OTP Expired",
       });
     }
@@ -205,14 +248,14 @@ export const verifyLoginOtp = async (req, res) => {
     const user = await User.findOne({ email });
 
     const token = jwt.sign(
-        {
-          userId: user._id,
-          role: user.role,
-          email: user.email,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-);
+      {
+        userId: user._id,
+        role: user.role,
+        email: user.email,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
     await Otp.deleteMany({ email });
 
@@ -225,9 +268,109 @@ export const verifyLoginOtp = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        isActive: user.isActive,
+        isVerified: user.isVerified,
       },
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
 
+// Get all users
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+
+    res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Get user by ID
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Activate / Deactivate user
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.isActive = !user.isActive;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `User ${
+        user.isActive ? "activated" : "deactivated"
+      } successfully`,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Verify doctor
+export const verifyDoctor = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+
+    if (!user || user.role !== "doctor") {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found",
+      });
+    }
+
+    user.isVerified = true;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Doctor verified successfully",
+      data: user,
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
