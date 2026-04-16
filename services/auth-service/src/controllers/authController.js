@@ -205,13 +205,14 @@ export const verifyLoginOtp = async (req, res) => {
     const user = await User.findOne({ email });
 
     const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+        {
+          userId: user._id,
+          role: user.role,
+          email: user.email,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+);
 
     await Otp.deleteMany({ email });
 
