@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: notification-service:latest
+          ports:
+            - containerPort: 5004
+          env:
+            - name: PORT
+              value: "5004"
+            - name: MONGO_URI
+              value: "mongodb+srv://rageeshan0730_db_user:gPzmwFHHGBMa7P5t@dsassignment.negpwzu.mongodb.net/notification_db?appName=DSAssignment"
+            - name: RABBITMQ_URI
+              value: "amqp://rabbitmq:5672"
+            - name: EMAIL_SERVICE
+              value: "gmail"
+            - name: EMAIL
+              value: "your_email@gmail.com"
+            - name: PASSWORD
+              value: "your_app_password"
