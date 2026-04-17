@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  doctor-service:
+    build:
+      context: ./backend/services/doctor-service
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - MONGO_URI=mongodb+srv://rageeshan0730_db_user:gPzmwFHHGBMa7P5t@dsassignment.negpwzu.mongodb.net/doctor_db?appName=DSAssignment
+      - JWT_SECRET=member1_secret_placeholder
+    restart: unless-stopped
+
+  appointment-service:
+    build:
+      context: ./backend/services/appointment-service
+    ports:
+      - "5004:5004"
+    environment:
+      - PORT=5004
+      - MONGO_URI=mongodb+srv://rageeshan0730_db_user:gPzmwFHHGBMa7P5t@dsassignment.negpwzu.mongodb.net/appointment_db?appName=DSAssignment
+      - JWT_SECRET=member1_secret_placeholder
+      - DOCTOR_SERVICE_URL=http://doctor-service:5003/api/doctors
+    depends_on:
+      - doctor-service
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend/doctor-appointment-ui
+    ports:
+      - "80:80"
+    depends_on:
+      - doctor-service
+      - appointment-service
+    restart: unless-stopped
