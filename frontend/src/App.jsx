@@ -19,6 +19,8 @@ import { PatientBrowseDoctorsPage } from "./pages/patient/PatientBrowseDoctorsPa
 import { PatientReportsPage } from "./pages/patient/PatientReportsPage.jsx";
 import { PatientPrescriptionsPage } from "./pages/patient/PatientPrescriptionsPage.jsx";
 import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage.jsx";
+import { PatientSymptomPredictorPage } from "./pages/patient/PatientSymptomPredictorPage.jsx";
+import { PatientPaymentsPage } from "./pages/patient/PatientPaymentsPage.jsx";
 
 import { DoctorDashboardPage } from "./pages/doctor/DoctorDashboardPage.jsx";
 import { DoctorPatientPage } from "./pages/doctor/DoctorPatientPage.jsx";
@@ -27,6 +29,7 @@ import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage.jsx";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage.jsx";
 import { AdminUserDetailsPage } from "./pages/admin/AdminUserDetailsPage.jsx";
 import { AdminPatientDetailsPage } from "./pages/admin/AdminPatientDetailsPage.jsx";
+import { AdminPaymentsPage } from "./pages/admin/AdminPaymentsPage.jsx";
 
 // Legacy / standalone pages (not yet integrated into new layout)
 import FindDoctors from "./pages/FindDoctors.jsx";
@@ -60,6 +63,8 @@ export default function App() {
             element={<PatientBrowseDoctorsPage />}
           />
           <Route path="/patient/appointments" element={<PatientAppointmentsPage />} />
+          <Route path="/patient/symptom-predictor" element={<PatientSymptomPredictorPage />} />
+          <Route path="/patient/payments" element={<PatientPaymentsPage />} />
           <Route
             path="/patient/profile/create"
             element={<PatientProfileCreatePage />}
@@ -96,6 +101,7 @@ export default function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/payments" element={<AdminPaymentsPage />} />
           <Route
             path="/admin/users/:userId"
             element={<AdminUserDetailsPage />}

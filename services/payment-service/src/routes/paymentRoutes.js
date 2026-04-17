@@ -16,10 +16,10 @@ router.post("/stripe/checkout", createStripeCheckout); // POST /api/payments/str
 router.post("/webhook/stripe", handleStripeWebhook); // POST /api/payments/webhook/stripe
 router.get("/stripe/session/:sessionId/verify", verifyStripeSession); // GET /api/payments/stripe/session/:sessionId/verify
 router.get("/my", getMyPayments); // GET  /api/payments/my
-router.get("/:id", getPaymentById); // GET  /api/payments/:id
 
 // Admin routes
 router.get("/", getAllPayments); // GET  /api/payments
 router.get("/admin/summary", getFinancialSummary); // GET  /api/payments/admin/summary
+router.get("/:id", getPaymentById); // GET  /api/payments/:id
 
 export default router;

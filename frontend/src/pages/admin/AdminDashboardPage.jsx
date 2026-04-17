@@ -145,6 +145,20 @@ export function AdminDashboardPage() {
                 </Link>
               </div>
             </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-900">
+                Payments overview
+              </div>
+              <div className="mt-1 text-sm text-slate-600">
+                View every payment record, status, and financial summary.
+              </div>
+              <div className="mt-4">
+                <Link to="/admin/payments">
+                  <Button>Open payments</Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </CardBody>
       </Card>

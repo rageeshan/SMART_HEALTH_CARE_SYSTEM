@@ -25,6 +25,14 @@ export default defineConfig({
         target: "http://localhost:5006",
         changeOrigin: true,
       },
+      "/api/symptoms": {
+        target: "http://localhost:5007",
+        changeOrigin: true,
+      },
+      "/api/payments": {
+        target: "http://localhost:5008",
+        changeOrigin: true,
+      },
     },
   },
 });

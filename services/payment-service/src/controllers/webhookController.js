@@ -1,6 +1,7 @@
 import Payment from "../models/Payment.js";
 import axios from "axios";
 import { getStripeClient } from "../config/stripe.js";
+import { sendPaymentReceiptEmail } from "../services/receiptService.js";
 // ─────────────────────────────────────────────
 // Helper: Notify appointment-service that payment is complete
 // ─────────────────────────────────────────────
@@ -56,6 +57,13 @@ const handleStripeWebhook = async (req, res) => {
 
       if (payment) {
         await notifyAppointmentService(payment.appointmentId, "paid");
+        await sendPaymentReceiptEmail({
+          to: payment?.metadata?.customerEmail || session.customer_email || null,
+          appointmentId: payment.appointmentId,
+          amount: payment.amount,
+          currency: payment.currency,
+          paymentId: payment._id,
+        });
       }
     } else if (event.type === "checkout.session.expired") {
       const session = event.data.object;

@@ -293,3 +293,26 @@ exports.issuePrescription = async (req, res) => {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
+
+// @desc    Update appointment payment status (internal)
+// @route   PATCH /api/appointments/:id/payment-status
+// @access  Internal service call
+exports.updatePaymentStatus = async (req, res) => {
+  try {
+    const { paymentStatus } = req.body;
+    const allowed = ['pending', 'paid', 'failed', 'refunded'];
+    if (!allowed.includes(String(paymentStatus))) {
+      return res.status(400).json({ message: 'Invalid paymentStatus' });
+    }
+
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+
+    appointment.paymentStatus = paymentStatus;
+    await appointment.save();
+
+    return res.status(200).json(appointment);
+  } catch (error) {
+    return res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};

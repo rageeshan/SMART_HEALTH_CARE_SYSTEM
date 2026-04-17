@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import Payment from "../models/Payment.js";
 import { getStripeClient } from "../config/stripe.js";
+import { sendPaymentReceiptEmail } from "../services/receiptService.js";
 
 const notifyAppointmentService = async (appointmentId, status) => {
   if (!process.env.APPOINTMENT_SERVICE_URL) {
@@ -169,6 +170,13 @@ const verifyStripeSession = async (req, res) => {
 
     if (status === "completed") {
       await notifyAppointmentService(payment.appointmentId, "paid");
+      await sendPaymentReceiptEmail({
+        to: payment?.metadata?.customerEmail || session.customer_email || null,
+        appointmentId: payment.appointmentId,
+        amount: payment.amount,
+        currency: payment.currency,
+        paymentId: payment._id,
+      });
     }
 
     res.status(200).json({

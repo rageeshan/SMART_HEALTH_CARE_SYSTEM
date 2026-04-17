@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { authApi } from "../../api/authApi.js";
 import { doctorApi } from "../../api/doctorApi.js";
@@ -17,6 +18,7 @@ function normalizeDoctors(res) {
 }
 
 export function PatientBrowseDoctorsPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [doctors, setDoctors] = useState([]);
   const [query, setQuery] = useState("");
@@ -99,15 +101,21 @@ export function PatientBrowseDoctorsPage() {
     }
     setBookingBusy(true);
     try {
-      await appointmentApi.book({
+      const created = await appointmentApi.book({
         doctorId: selected._id ?? selected.id,
         date: booking.date,
         timeSlot: booking.timeSlot,
         symptoms: booking.symptoms,
       });
       toast.success("Appointment request submitted");
+      const createdId = created?._id ?? created?.id ?? null;
       setSelected(null);
       setBooking({ date: "", timeSlot: "", symptoms: "" });
+      navigate(
+        createdId
+          ? `/patient/payments?appointmentId=${encodeURIComponent(createdId)}`
+          : "/patient/payments"
+      );
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     } finally {

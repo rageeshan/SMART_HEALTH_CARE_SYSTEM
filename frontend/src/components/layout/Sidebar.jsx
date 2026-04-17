@@ -57,6 +57,8 @@ export function Sidebar({ onClose }) {
             <NavItem to="/patient/dashboard" label="Dashboard" />
             <NavItem to="/patient/doctors" label="Browse doctors" />
             <NavItem to="/patient/appointments" label="My appointments" />
+            <NavItem to="/patient/symptom-predictor" label="AI symptom predictor" />
+            <NavItem to="/patient/payments" label="Payments" />
             <NavItem to="/patient/profile/create" label="Create profile" />
             <NavItem to="/patient/profile/edit" label="Edit profile" />
             <NavItem to="/patient/medical-history" label="Medical history" />
@@ -81,6 +83,7 @@ export function Sidebar({ onClose }) {
             </div>
             <NavItem to="/admin/dashboard" label="Dashboard" />
             <NavItem to="/admin/users" label="Users" />
+            <NavItem to="/admin/payments" label="Payments" />
           </div>
         ) : null}
       </nav>
