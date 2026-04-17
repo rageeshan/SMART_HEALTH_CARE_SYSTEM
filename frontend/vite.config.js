@@ -14,6 +14,14 @@ export default defineConfig({
         target: "http://localhost:5002",
         changeOrigin: true,
       },
+      "/api/doctors": {
+        target: "http://localhost:5003",
+        changeOrigin: true,
+      },
+      "/api/appointments": {
+        target: "http://localhost:5004",
+        changeOrigin: true,
+      },
     },
   },
 });

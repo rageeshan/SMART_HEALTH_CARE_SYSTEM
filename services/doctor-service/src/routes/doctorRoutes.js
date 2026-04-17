@@ -1,19 +1,19 @@
 const express = require('express');
 const { createProfile, getDoctors, getDoctorById, setAvailability, getMyProfile, updateProfile, deleteAvailability } = require('../controllers/doctorController');
-const { mockProtect, authorize } = require('../middlewares/authMiddleware');
+const { protect, authorize } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
 router.route('/')
-  .post(mockProtect, createProfile) // Would normally be: protect, authorize('Doctor')
+  .post(protect, authorize('doctor'), createProfile)
   .get(getDoctors);
 
 router.route('/me')
-  .get(mockProtect, getMyProfile)
-  .put(mockProtect, updateProfile);
+  .get(protect, authorize('doctor'), getMyProfile)
+  .put(protect, authorize('doctor'), updateProfile);
 
-router.post('/availability', mockProtect, setAvailability);
-router.delete('/availability/:id', mockProtect, deleteAvailability);
+router.post('/availability', protect, authorize('doctor'), setAvailability);
+router.delete('/availability/:id', protect, authorize('doctor'), deleteAvailability);
 
 router.get('/:id', getDoctorById);
 

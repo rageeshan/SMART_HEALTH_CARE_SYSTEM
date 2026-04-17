@@ -43,7 +43,10 @@ export default function App() {
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verify-register-otp" element={<VerifyRegisterOtpPage />} />
+        <Route
+          path="/verify-register-otp"
+          element={<VerifyRegisterOtpPage />}
+        />
         <Route path="/verify-login-otp" element={<VerifyLoginOtpPage />} />
       </Route>
 
@@ -51,12 +54,18 @@ export default function App() {
       <Route element={<RoleProtectedRoute allowedRoles={[ROLE.PATIENT]} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/patient/dashboard" element={<PatientDashboardPage />} />
-          <Route path="/patient/doctors" element={<PatientBrowseDoctorsPage />} />
+          <Route
+            path="/patient/doctors"
+            element={<PatientBrowseDoctorsPage />}
+          />
           <Route
             path="/patient/profile/create"
             element={<PatientProfileCreatePage />}
           />
-          <Route path="/patient/profile/edit" element={<PatientProfileEditPage />} />
+          <Route
+            path="/patient/profile/edit"
+            element={<PatientProfileEditPage />}
+          />
           <Route
             path="/patient/medical-history"
             element={<PatientMedicalHistoryPage />}
@@ -85,7 +94,10 @@ export default function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/users/:userId" element={<AdminUserDetailsPage />} />
+          <Route
+            path="/admin/users/:userId"
+            element={<AdminUserDetailsPage />}
+          />
           <Route
             path="/admin/patients/:patientId"
             element={<AdminPatientDetailsPage />}
@@ -97,7 +109,10 @@ export default function App() {
       <Route path="/legacy/find-doctors" element={<FindDoctors />} />
       <Route path="/legacy/my-appointments" element={<MyAppointments />} />
       <Route path="/legacy/doctor/dashboard" element={<DoctorDashboard />} />
-      <Route path="/legacy/doctor/availability" element={<ManageAvailability />} />
+      <Route
+        path="/legacy/doctor/availability"
+        element={<ManageAvailability />}
+      />
       <Route path="/legacy/doctor/profile" element={<DoctorProfile />} />
 
       <Route path="*" element={<NotFoundPage />} />

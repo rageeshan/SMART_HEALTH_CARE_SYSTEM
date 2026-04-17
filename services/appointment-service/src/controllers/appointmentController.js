@@ -50,7 +50,7 @@ exports.getDoctorAppointments = async (req, res) => {
     try {
       const response = await axios.get(`${DOCTOR_SERVICE_URL}/me`, {
         headers: {
-          'x-mock-user': JSON.stringify({ userId: req.user.userId, role: 'Doctor' })
+          authorization: req.headers.authorization
         }
       });
       doctor = response.data;
