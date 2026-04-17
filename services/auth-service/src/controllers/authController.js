@@ -254,7 +254,7 @@ export const verifyLoginOtp = async (req, res) => {
         email: user.email,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "7d" }
     );
 
     await Otp.deleteMany({ email });

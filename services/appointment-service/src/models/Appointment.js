@@ -2,9 +2,8 @@ const mongoose = require('mongoose');
 
 const appointmentSchema = new mongoose.Schema({
   doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
-    required: true
+    type: String, // Auth Service doctor user ID
+    required: true,
   },
   patientId: {
     type: String, // Referencing Auth Service (Member 1) User ID

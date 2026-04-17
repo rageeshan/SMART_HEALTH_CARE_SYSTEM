@@ -1,7 +1,28 @@
 const Appointment = require('../models/Appointment');
 const axios = require('axios');
 
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:5000/api/auth';
 const DOCTOR_SERVICE_URL = process.env.DOCTOR_SERVICE_URL || 'http://localhost:5003/api/doctors';
+
+function getDayOfWeek(dateString) {
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-US', { weekday: 'long' });
+}
+
+function parseTimeSlot(slot) {
+  const raw = String(slot || '').trim();
+  const parts = raw.split('-').map((p) => p.trim());
+  if (parts.length !== 2) return null;
+  const [start, end] = parts;
+  if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return null;
+  return { start, end };
+}
+
+function toMinutes(hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return h * 60 + m;
+}
 
 // @desc    Book an appointment
 // @route   POST /api/appointments
@@ -10,12 +31,61 @@ exports.bookAppointment = async (req, res) => {
   try {
     const { doctorId, date, timeSlot, symptoms } = req.body;
     
-    // Check if doctor exists via HTTP call to doctor-service
+    if (!doctorId) {
+      return res.status(400).json({ message: 'doctorId is required' });
+    }
+    if (!date) {
+      return res.status(400).json({ message: 'date is required' });
+    }
+    if (!timeSlot) {
+      return res.status(400).json({ message: 'timeSlot is required' });
+    }
+
+    const dayOfWeek = getDayOfWeek(date);
+    if (!dayOfWeek) {
+      return res.status(400).json({ message: 'Invalid date' });
+    }
+
+    const parsedSlot = parseTimeSlot(timeSlot);
+    if (!parsedSlot) {
+      return res.status(400).json({ message: 'Invalid timeSlot format. Use "HH:mm - HH:mm".' });
+    }
+
+    // Check if doctor exists via auth-service (verified + active doctors list)
     try {
-      await axios.get(`${DOCTOR_SERVICE_URL}/${doctorId}`);
+      const { data } = await axios.get(`${AUTH_SERVICE_URL}/doctors`, {
+        headers: { authorization: req.headers.authorization },
+      });
+
+      const doctors = Array.isArray(data?.data) ? data.data : [];
+      const exists = doctors.some((d) => String(d?._id) === String(doctorId));
+      if (!exists) {
+        return res.status(404).json({ message: 'Doctor not found or not verified' });
+      }
+    } catch (err) {
+      return res.status(500).json({ message: 'Error communicating with auth-service' });
+    }
+
+    // Check if doctor has published availability for that day, and slot is within it
+    try {
+      const { data } = await axios.get(`${DOCTOR_SERVICE_URL}/user/${doctorId}/availability`);
+      const availability = Array.isArray(data?.availability) ? data.availability : [];
+
+      const slotStart = toMinutes(parsedSlot.start);
+      const slotEnd = toMinutes(parsedSlot.end);
+      const allowed = availability.some((a) => {
+        if (a.dayOfWeek !== dayOfWeek) return false;
+        const aStart = toMinutes(a.startTime);
+        const aEnd = toMinutes(a.endTime);
+        return slotStart >= aStart && slotEnd <= aEnd;
+      });
+
+      if (!allowed) {
+        return res.status(400).json({ message: `Selected time slot is not available for ${dayOfWeek}` });
+      }
     } catch (err) {
       if (err.response && err.response.status === 404) {
-        return res.status(404).json({ message: 'Doctor not found' });
+        return res.status(400).json({ message: 'Doctor has not published availability yet' });
       }
       return res.status(500).json({ message: 'Error communicating with doctor-service' });
     }
@@ -45,23 +115,9 @@ exports.bookAppointment = async (req, res) => {
 // @access  Private (Doctor)
 exports.getDoctorAppointments = async (req, res) => {
   try {
-    // Get doctor profile via HTTP call
-    let doctor;
-    try {
-      const response = await axios.get(`${DOCTOR_SERVICE_URL}/me`, {
-        headers: {
-          authorization: req.headers.authorization
-        }
-      });
-      doctor = response.data;
-    } catch (err) {
-      if (err.response && err.response.status === 404) {
-        return res.status(404).json({ message: 'Doctor profile not found' });
-      }
-      return res.status(500).json({ message: 'Error communicating with doctor-service' });
-    }
-
-    const appointments = await Appointment.find({ doctorId: doctor._id }).sort({ date: 1 });
+    const appointments = await Appointment.find({
+      doctorId: req.user.userId,
+    }).sort({ date: 1 });
     res.status(200).json(appointments);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
@@ -75,28 +131,37 @@ exports.getPatientAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ patientId: req.user.userId });
     
-    // Manual pseudo-populate for doctorId
+    // Manual pseudo-populate doctorId from auth-service verified doctors list
     let doctorsMap = {};
     try {
-      // Fetch all docs to create a lookup map
-      const { data: doctors } = await axios.get(DOCTOR_SERVICE_URL);
-      doctors.forEach(doc => {
-        doctorsMap[doc._id] = { name: doc.name, specialty: doc.specialty };
+      const { data } = await axios.get(`${AUTH_SERVICE_URL}/doctors`, {
+        headers: { authorization: req.headers.authorization },
+      });
+      const doctors = Array.isArray(data?.data) ? data.data : [];
+      doctors.forEach((doc) => {
+        doctorsMap[String(doc._id)] = {
+          name: doc.fullName,
+          email: doc.email,
+        };
       });
     } catch (err) {
+      // Not fatal: still return appointments, just without doctor details
       console.error('Failed to fetch doctors', err.message);
     }
 
     // Attach doctor details to appointments
     const populatedAppts = appointments.map(appt => {
-      let docData = doctorsMap[appt.doctorId] || { name: 'Unknown', specialty: 'Unknown' };
+      let docData = doctorsMap[String(appt.doctorId)] || {
+        name: 'Unknown',
+        email: 'Unknown',
+      };
       return {
         ...appt._doc,
         doctorId: {
           _id: appt.doctorId,
           name: docData.name,
-          specialty: docData.specialty
-        }
+          email: docData.email,
+        },
       };
     });
 
@@ -115,6 +180,10 @@ exports.updateStatus = async (req, res) => {
     const appointment = await Appointment.findById(req.params.id);
     if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
 
+    if (String(appointment.doctorId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: 'Not authorized for this appointment' });
+    }
+
     appointment.status = status;
     await appointment.save();
 
@@ -132,6 +201,10 @@ exports.issuePrescription = async (req, res) => {
     const { prescription } = req.body;
     const appointment = await Appointment.findById(req.params.id);
     if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+
+    if (String(appointment.doctorId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: 'Not authorized for this appointment' });
+    }
 
     appointment.prescription = prescription;
     appointment.status = 'COMPLETED'; // auto complete when prescription is issued

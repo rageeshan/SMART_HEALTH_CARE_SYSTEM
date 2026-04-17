@@ -46,7 +46,21 @@ export function createHttpClient(baseURL) {
     (err) => {
       const status = err?.response?.status
       if (status === 401) {
-        handleUnauthorizedOnce()
+        const token = storage.getToken()
+        const looksExpired = token ? isJwtExpired(token) : true
+
+        // If the token is NOT expired but we still get 401, do not force-logout.
+        // This usually means a backend auth misconfiguration (wrong JWT_SECRET / wrong service),
+        // and redirecting to login creates a confusing loop.
+        if (!looksExpired) {
+          const message =
+            err?.response?.data?.message ??
+            err?.response?.data?.error ??
+            'Unauthorized'
+          toast.error(message)
+        } else {
+          handleUnauthorizedOnce()
+        }
       }
       return Promise.reject(err)
     },

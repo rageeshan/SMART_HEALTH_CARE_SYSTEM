@@ -25,5 +25,10 @@ spec:
           value: "5004"
         - name: MONGO_URI
           value: "mongodb://mongo-service:27017/healthcare_doctors"
+        - name: DOCTOR_SERVICE_URL
+          value: "http://doctor-service:5003/api/doctors"
         - name: JWT_SECRET
-          value: "member1_secret_placeholder"
+          valueFrom:
+            secretKeyRef:
+              name: shcs-jwt
+              key: JWT_SECRET

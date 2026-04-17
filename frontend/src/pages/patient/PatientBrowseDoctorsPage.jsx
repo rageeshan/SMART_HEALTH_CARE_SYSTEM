@@ -1,80 +1,121 @@
-import { useEffect, useMemo, useState } from 'react'
-import toast from 'react-hot-toast'
-import { doctorApi } from '../../api/doctorApi.js'
-import { appointmentApi } from '../../api/appointmentApi.js'
-import { getApiErrorMessage } from '../../api/error.js'
-import { Card, CardBody, CardHeader } from '../../components/ui/Card.jsx'
-import { EmptyState } from '../../components/ui/EmptyState.jsx'
-import { Input } from '../../components/ui/Input.jsx'
-import { LoadingScreen } from '../../components/ui/LoadingScreen.jsx'
-import { Button } from '../../components/ui/Button.jsx'
-import { Modal } from '../../components/ui/Modal.jsx'
+import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
+import { authApi } from "../../api/authApi.js";
+import { doctorApi } from "../../api/doctorApi.js";
+import { appointmentApi } from "../../api/appointmentApi.js";
+import { getApiErrorMessage } from "../../api/error.js";
+import { Card, CardBody, CardHeader } from "../../components/ui/Card.jsx";
+import { EmptyState } from "../../components/ui/EmptyState.jsx";
+import { Input } from "../../components/ui/Input.jsx";
+import { LoadingScreen } from "../../components/ui/LoadingScreen.jsx";
+import { Button } from "../../components/ui/Button.jsx";
+import { Modal } from "../../components/ui/Modal.jsx";
 
 function normalizeDoctors(res) {
-  const list = res?.data ?? res?.doctors ?? res ?? []
-  return Array.isArray(list) ? list : []
+  const list = res?.data ?? res?.doctors ?? res ?? [];
+  return Array.isArray(list) ? list : [];
 }
 
 export function PatientBrowseDoctorsPage() {
-  const [loading, setLoading] = useState(true)
-  const [doctors, setDoctors] = useState([])
-  const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState(null)
+  const [loading, setLoading] = useState(true);
+  const [doctors, setDoctors] = useState([]);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [availability, setAvailability] = useState([]);
+  const [availabilityBusy, setAvailabilityBusy] = useState(false);
   const [booking, setBooking] = useState({
-    date: '',
-    timeSlot: '',
-    symptoms: '',
-  })
-  const [bookingBusy, setBookingBusy] = useState(false)
+    date: "",
+    timeSlot: "",
+    symptoms: "",
+  });
+  const [bookingBusy, setBookingBusy] = useState(false);
 
   useEffect(() => {
-    ;(async () => {
-      setLoading(true)
+    (async () => {
+      setLoading(true);
       try {
-        const res = await doctorApi.getDoctors()
-        setDoctors(normalizeDoctors(res))
+        const res = await authApi.getDoctors();
+        setDoctors(normalizeDoctors(res?.data ?? res));
       } catch (err) {
-        toast.error(getApiErrorMessage(err))
-        setDoctors([])
+        toast.error(getApiErrorMessage(err));
+        setDoctors([]);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    })()
-  }, [])
+    })();
+  }, []);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return doctors
+    const q = query.trim().toLowerCase();
+    if (!q) return doctors;
     return doctors.filter((d) =>
-      `${d.name ?? ''} ${d.specialty ?? ''}`.toLowerCase().includes(q),
-    )
-  }, [doctors, query])
+      `${d.fullName ?? ""} ${d.email ?? ""}`.toLowerCase().includes(q)
+    );
+  }, [doctors, query]);
+
+  const dayOfWeek = useMemo(() => {
+    if (!booking.date) return null;
+    const d = new Date(`${booking.date}T00:00:00`);
+    return d.toLocaleDateString("en-US", { weekday: "long" });
+  }, [booking.date]);
+
+  const timeSlotOptions = useMemo(() => {
+    if (!dayOfWeek) return [];
+    const slots = availability
+      .filter((a) => a.dayOfWeek === dayOfWeek)
+      .map((a) => `${a.startTime} - ${a.endTime}`);
+
+    return Array.from(new Set(slots));
+  }, [availability, dayOfWeek]);
+
+  useEffect(() => {
+    if (!selected) {
+      setAvailability([]);
+      setAvailabilityBusy(false);
+      return;
+    }
+
+    (async () => {
+      setAvailabilityBusy(true);
+      try {
+        const userId = selected._id ?? selected.id;
+        const res = await doctorApi.getAvailabilityByUserId(userId);
+        const list = Array.isArray(res?.availability) ? res.availability : [];
+        setAvailability(list);
+      } catch {
+        // Not fatal; just show empty slots
+        setAvailability([]);
+      } finally {
+        setAvailabilityBusy(false);
+      }
+    })();
+  }, [selected]);
 
   async function submitBooking() {
-    if (!selected) return
+    if (!selected) return;
     if (!booking.date || !booking.timeSlot || !booking.symptoms.trim()) {
-      toast.error('Please select date, time, and symptoms.')
-      return
+      toast.error("Please select date, time, and symptoms.");
+      return;
     }
-    setBookingBusy(true)
+    setBookingBusy(true);
     try {
       await appointmentApi.book({
         doctorId: selected._id ?? selected.id,
         date: booking.date,
         timeSlot: booking.timeSlot,
         symptoms: booking.symptoms,
-      })
-      toast.success('Appointment request submitted')
-      setSelected(null)
-      setBooking({ date: '', timeSlot: '', symptoms: '' })
+      });
+      toast.success("Appointment request submitted");
+      setSelected(null);
+      setBooking({ date: "", timeSlot: "", symptoms: "" });
     } catch (err) {
-      toast.error(getApiErrorMessage(err))
+      toast.error(getApiErrorMessage(err));
     } finally {
-      setBookingBusy(false)
+      setBookingBusy(false);
     }
   }
 
-  if (loading) return <LoadingScreen title="Loading doctors…" />
+  if (loading) return <LoadingScreen title="Loading doctors…" />;
 
   return (
     <div className="space-y-6">
@@ -82,7 +123,9 @@ export function PatientBrowseDoctorsPage() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Browse doctors</div>
+              <div className="text-sm font-semibold text-slate-900">
+                Browse doctors
+              </div>
               <div className="text-xs text-slate-500">
                 All verified, active doctors on the platform.
               </div>
@@ -101,18 +144,22 @@ export function PatientBrowseDoctorsPage() {
           {filtered.length === 0 ? (
             <EmptyState
               title="No doctors found"
-              description={doctors.length ? 'Try a different search.' : 'No doctors are registered yet.'}
+              description={
+                doctors.length
+                  ? "Try a different search."
+                  : "No doctors are registered yet."
+              }
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((d) => {
-                const id = d._id ?? d.id
-                const initials = (d.name ?? 'D')
-                  .split(' ')
+                const id = d._id ?? d.id;
+                const initials = (d.fullName ?? "D")
+                  .split(" ")
                   .map((w) => w[0])
-                  .join('')
+                  .join("")
                   .slice(0, 2)
-                  .toUpperCase()
+                  .toUpperCase();
 
                 return (
                   <div
@@ -126,23 +173,18 @@ export function PatientBrowseDoctorsPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-slate-900">
-                          Dr. {d.name ?? '—'}
+                          Dr. {d.fullName ?? "—"}
                         </div>
                         <div className="mt-0.5 truncate text-xs text-slate-500">
-                          {d.specialty ?? '—'}
+                          {d.email ?? "—"}
                         </div>
-                        {typeof d.consultationFee === 'number' ? (
-                          <div className="mt-2 text-xs text-slate-600">
-                            Fee: <span className="font-semibold">LKR {d.consultationFee}</span>
-                          </div>
-                        ) : null}
                       </div>
                     </div>
                     <Button onClick={() => setSelected(d)} className="w-full">
                       Book appointment
                     </Button>
                   </div>
-                )
+                );
               })}
             </div>
           )}
@@ -155,11 +197,15 @@ export function PatientBrowseDoctorsPage() {
         onClose={() => (bookingBusy ? null : setSelected(null))}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setSelected(null)} disabled={bookingBusy}>
+            <Button
+              variant="outline"
+              onClick={() => setSelected(null)}
+              disabled={bookingBusy}
+            >
               Cancel
             </Button>
             <Button onClick={submitBooking} disabled={bookingBusy}>
-              {bookingBusy ? 'Booking…' : 'Confirm'}
+              {bookingBusy ? "Booking…" : "Confirm"}
             </Button>
           </div>
         }
@@ -167,8 +213,10 @@ export function PatientBrowseDoctorsPage() {
         {selected ? (
           <div className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-              <div className="font-semibold text-slate-900">Dr. {selected.name}</div>
-              <div className="text-xs text-slate-600">{selected.specialty}</div>
+              <div className="font-semibold text-slate-900">
+                Dr. {selected.fullName}
+              </div>
+              <div className="text-xs text-slate-600">{selected.email}</div>
             </div>
 
             <Input
@@ -177,7 +225,13 @@ export function PatientBrowseDoctorsPage() {
               type="date"
               min={new Date().toISOString().slice(0, 10)}
               value={booking.date}
-              onChange={(e) => setBooking((b) => ({ ...b, date: e.target.value }))}
+              onChange={(e) =>
+                setBooking((b) => ({
+                  ...b,
+                  date: e.target.value,
+                  timeSlot: "",
+                }))
+              }
             />
 
             <label className="block text-sm font-medium text-slate-700">
@@ -185,20 +239,31 @@ export function PatientBrowseDoctorsPage() {
               <select
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200"
                 value={booking.timeSlot}
-                onChange={(e) => setBooking((b) => ({ ...b, timeSlot: e.target.value }))}
+                onChange={(e) =>
+                  setBooking((b) => ({ ...b, timeSlot: e.target.value }))
+                }
+                disabled={!booking.date || availabilityBusy}
               >
                 <option value="">Select a time slot</option>
-                <option value="08:00 - 08:30">08:00 – 08:30</option>
-                <option value="08:30 - 09:00">08:30 – 09:00</option>
-                <option value="09:00 - 09:30">09:00 – 09:30</option>
-                <option value="09:30 - 10:00">09:30 – 10:00</option>
-                <option value="10:00 - 10:30">10:00 – 10:30</option>
-                <option value="10:30 - 11:00">10:30 – 11:00</option>
-                <option value="14:00 - 14:30">14:00 – 14:30</option>
-                <option value="14:30 - 15:00">14:30 – 15:00</option>
-                <option value="15:00 - 15:30">15:00 – 15:30</option>
-                <option value="15:30 - 16:00">15:30 – 16:00</option>
+                {timeSlotOptions.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot.replace("-", "–")}
+                  </option>
+                ))}
               </select>
+              {!booking.date ? (
+                <div className="mt-1 text-xs text-slate-500">
+                  Pick a date to see available slots.
+                </div>
+              ) : availabilityBusy ? (
+                <div className="mt-1 text-xs text-slate-500">
+                  Loading availability…
+                </div>
+              ) : timeSlotOptions.length === 0 ? (
+                <div className="mt-1 text-xs text-amber-700">
+                  No slots available for {dayOfWeek ?? "this day"}.
+                </div>
+              ) : null}
             </label>
 
             <label className="block text-sm font-medium text-slate-700">
@@ -207,7 +272,9 @@ export function PatientBrowseDoctorsPage() {
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200"
                 rows={3}
                 value={booking.symptoms}
-                onChange={(e) => setBooking((b) => ({ ...b, symptoms: e.target.value }))}
+                onChange={(e) =>
+                  setBooking((b) => ({ ...b, symptoms: e.target.value }))
+                }
                 placeholder="Briefly describe your symptoms…"
               />
             </label>
@@ -215,5 +282,5 @@ export function PatientBrowseDoctorsPage() {
         ) : null}
       </Modal>
     </div>
-  )
+  );
 }

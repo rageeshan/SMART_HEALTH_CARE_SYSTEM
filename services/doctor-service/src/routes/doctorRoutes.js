@@ -1,5 +1,14 @@
 const express = require('express');
-const { createProfile, getDoctors, getDoctorById, setAvailability, getMyProfile, updateProfile, deleteAvailability } = require('../controllers/doctorController');
+const {
+  createProfile,
+  getDoctors,
+  getDoctorById,
+  setAvailability,
+  getMyProfile,
+  updateProfile,
+  deleteAvailability,
+  getAvailabilityByUserId,
+} = require('../controllers/doctorController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
@@ -14,6 +23,8 @@ router.route('/me')
 
 router.post('/availability', protect, authorize('doctor'), setAvailability);
 router.delete('/availability/:id', protect, authorize('doctor'), deleteAvailability);
+
+router.get('/user/:userId/availability', getAvailabilityByUserId);
 
 router.get('/:id', getDoctorById);
 

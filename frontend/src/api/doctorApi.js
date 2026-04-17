@@ -29,5 +29,9 @@ export const doctorApi = {
     const { data } = await doctorClient.delete(`/availability/${slotId}`)
     return data
   },
+  async getAvailabilityByUserId(userId) {
+    const { data } = await doctorClient.get(`/user/${userId}/availability`)
+    return data
+  },
 }
 

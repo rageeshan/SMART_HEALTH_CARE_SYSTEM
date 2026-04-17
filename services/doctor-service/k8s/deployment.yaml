@@ -26,4 +26,7 @@ spec:
         - name: MONGO_URI
           value: "mongodb://mongo-service:27017/healthcare_doctors"
         - name: JWT_SECRET
-          value: "member1_secret_placeholder"
+          valueFrom:
+            secretKeyRef:
+              name: shcs-jwt
+              key: JWT_SECRET

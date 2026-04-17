@@ -144,3 +144,27 @@ exports.deleteAvailability = async (req, res) => {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
+
+// @desc    Get availability by auth userId (public)
+// @route   GET /api/doctors/user/:userId/availability
+// @access  Public
+exports.getAvailabilityByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const doctor = await Doctor.findOne({ userId });
+    if (!doctor) return res.status(404).json({ message: 'Doctor profile not found' });
+
+    const availability = await Availability.find({ doctorId: doctor._id }).sort({
+      dayOfWeek: 1,
+      startTime: 1,
+    });
+
+    return res.status(200).json({
+      doctorId: doctor._id,
+      userId: doctor.userId,
+      availability,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
