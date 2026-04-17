@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { appointmentApi } from '../../api/appointmentApi.js'
 import { telemedicineApi } from '../../api/telemedicineApi.js'
@@ -23,6 +24,7 @@ function statusVariant(status) {
 }
 
 export function PatientAppointmentsPage() {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [appointments, setAppointments] = useState([])
   const [joiningId, setJoiningId] = useState(null)
@@ -151,6 +153,18 @@ export function PatientAppointmentsPage() {
                         </div>
                       ) : null}
                     </div>
+
+                    {/* Pay now shortcut for pending-payment appointments */}
+                    {String(a.paymentStatus ?? 'pending').toLowerCase() !== 'paid' &&
+                     String(a.status ?? '').toUpperCase() !== 'REJECTED' &&
+                     String(a.status ?? '').toUpperCase() !== 'CANCELLED' ? (
+                      <button
+                        onClick={() => navigate(`/patient/payments?appointmentId=${encodeURIComponent(id)}`)}
+                        className="mt-1 w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                      >
+                        💳 Complete payment
+                      </button>
+                    ) : null}
 
                     {a?.telemedicine?.meetingUrl ? (
                       <Button

@@ -385,24 +385,35 @@ export function DoctorDashboardPage() {
                           </div>
                         ) : null}
                         {a.telemedicine?.meetingUrl ? (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => joinCall(a)}
-                              disabled={joiningAppointmentId === id}
-                            >
-                              {joiningAppointmentId === id ? 'Joining…' : 'Join call'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => endCall(a)}
-                              disabled={endingAppointmentId === id}
-                            >
-                              {endingAppointmentId === id ? 'Ending…' : 'End call'}
-                            </Button>
-                          </div>
+                          String(a.status ?? '').toUpperCase() === 'COMPLETED' ? (
+                            <div className="mt-2">
+                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
+                                <svg className="h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Call finished
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => joinCall(a)}
+                                disabled={joiningAppointmentId === id}
+                              >
+                                {joiningAppointmentId === id ? 'Joining…' : 'Join call'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => endCall(a)}
+                                disabled={endingAppointmentId === id}
+                              >
+                                {endingAppointmentId === id ? 'Ending…' : 'End call'}
+                              </Button>
+                            </div>
+                          )
                         ) : null}
                       </div>
 

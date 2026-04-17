@@ -1,8 +1,9 @@
 const Appointment = require('../models/Appointment');
 const axios = require('axios');
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:5000/api/auth';
-const DOCTOR_SERVICE_URL = process.env.DOCTOR_SERVICE_URL || 'http://localhost:5003/api/doctors';
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:5001/api/auth';
+const DOCTOR_SERVICE_URL = process.env.DOCTOR_SERVICE_URL || 'http://localhost:5004/api/doctors';
+const PATIENT_SERVICE_URL = process.env.PATIENT_SERVICE_URL || 'http://localhost:5002/api/patients';
 const TELEMEDICINE_SERVICE_URL =
   process.env.TELEMEDICINE_SERVICE_URL || 'http://localhost:5006/api/sessions';
 const NOTIFICATION_SERVICE_URL =
@@ -287,6 +288,23 @@ exports.issuePrescription = async (req, res) => {
     appointment.prescription = prescription;
     appointment.status = 'COMPLETED'; // auto complete when prescription is issued
     await appointment.save();
+
+    // Forward prescription to patient-service so it appears in patient's Prescriptions tab
+    const patientId = String(appointment.patientId);
+    const authHeader = req.headers.authorization; // doctor's Bearer token
+    try {
+      await axios.post(
+        `${PATIENT_SERVICE_URL}/${patientId}/prescriptions`,
+        {
+          medication: prescription,
+          instructions: `Appointment ID: ${appointment._id}`,
+        },
+        { headers: { Authorization: authHeader } }
+      );
+    } catch (fwdErr) {
+      // Non-fatal: log but don't fail the appointment update
+      console.error('Failed to forward prescription to patient-service:', fwdErr?.response?.data?.message || fwdErr.message);
+    }
 
     res.status(200).json(appointment);
   } catch (error) {

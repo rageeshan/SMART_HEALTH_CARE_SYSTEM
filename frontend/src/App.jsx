@@ -8,6 +8,8 @@ import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { VerifyRegisterOtpPage } from "./pages/auth/VerifyRegisterOtpPage.jsx";
 import { VerifyLoginOtpPage } from "./pages/auth/VerifyLoginOtpPage.jsx";
 import { NotFoundPage } from "./pages/NotFoundPage.jsx";
+import { PaymentSuccessPage } from "./pages/PaymentSuccessPage.jsx";
+import { PaymentCancelPage } from "./pages/PaymentCancelPage.jsx";
 
 import { DashboardLayout } from "./layouts/DashboardLayout.jsx";
 
@@ -122,6 +124,10 @@ export default function App() {
         element={<ManageAvailability />}
       />
       <Route path="/legacy/doctor/profile" element={<DoctorProfile />} />
+
+      {/* Payment result pages – public so Stripe can redirect back */}
+      <Route path="/payment/success" element={<PaymentSuccessPage />} />
+      <Route path="/payment/cancel" element={<PaymentCancelPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

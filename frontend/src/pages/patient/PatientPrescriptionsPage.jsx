@@ -51,47 +51,50 @@ export function PatientPrescriptionsPage() {
                   key={rx._id ?? rx.id}
                   className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  {/* Medication */}
+                  {/* Header */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="text-base font-bold text-slate-900">
+                    <div className="text-sm font-bold text-slate-900 leading-snug">
                       💊 {rx.medication}
                     </div>
                     <Badge variant="info">Rx</Badge>
                   </div>
 
-                  {/* Fields */}
-                  <div className="space-y-1.5 text-sm">
-                    {rx.dosage ? (
-                      <div className="flex items-center gap-2">
-                        <span className="w-20 text-xs font-medium uppercase tracking-wide text-slate-400">Dosage</span>
-                        <span className="text-slate-700">{rx.dosage}</span>
-                      </div>
-                    ) : null}
-                    {rx.frequency ? (
-                      <div className="flex items-center gap-2">
-                        <span className="w-20 text-xs font-medium uppercase tracking-wide text-slate-400">Frequency</span>
-                        <span className="text-slate-700">{rx.frequency}</span>
-                      </div>
-                    ) : null}
-                    {rx.duration ? (
-                      <div className="flex items-center gap-2">
-                        <span className="w-20 text-xs font-medium uppercase tracking-wide text-slate-400">Duration</span>
-                        <span className="text-slate-700">{rx.duration}</span>
-                      </div>
-                    ) : null}
-                    {rx.instructions ? (
-                      <div className="flex gap-2">
-                        <span className="w-20 flex-shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">Instructions</span>
-                        <span className="text-slate-700">{rx.instructions}</span>
-                      </div>
-                    ) : null}
-                  </div>
+                  {/* Structured fields (if provided by doctor) */}
+                  {(rx.dosage || rx.frequency || rx.duration) ? (
+                    <div className="space-y-1.5 text-sm">
+                      {rx.dosage ? (
+                        <div className="flex items-center gap-2">
+                          <span className="w-20 flex-shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">Dosage</span>
+                          <span className="text-slate-700">{rx.dosage}</span>
+                        </div>
+                      ) : null}
+                      {rx.frequency ? (
+                        <div className="flex items-center gap-2">
+                          <span className="w-20 flex-shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">Frequency</span>
+                          <span className="text-slate-700">{rx.frequency}</span>
+                        </div>
+                      ) : null}
+                      {rx.duration ? (
+                        <div className="flex items-center gap-2">
+                          <span className="w-20 flex-shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">Duration</span>
+                          <span className="text-slate-700">{rx.duration}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {/* Notes / instructions */}
+                  {rx.instructions ? (
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      {rx.instructions}
+                    </div>
+                  ) : null}
 
                   {/* Footer */}
                   <div className="mt-auto border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span>Dr. {rx.doctorName || 'Unknown doctor'}</span>
-                    {rx.issuedAt
-                      ? <span> · {String(rx.issuedAt).slice(0, 10)}</span>
+                    <span>Dr. {rx.doctorName || 'Your doctor'}</span>
+                    {(rx.issuedAt || rx.createdAt)
+                      ? <span> · {String(rx.issuedAt ?? rx.createdAt).slice(0, 10)}</span>
                       : null}
                   </div>
                 </div>
