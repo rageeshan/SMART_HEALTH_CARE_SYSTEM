@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Save, UserCog, Stethoscope, Phone, DollarSign, Award, Briefcase, AlertCircle } from 'lucide-react';
 
 const DoctorProfile = () => {
-  const { currentDoctorId, getCurrentDoctor, updateDoctor } = useApp();
+  const { getCurrentDoctor, updateDoctor } = useApp();
   const currentDoc = getCurrentDoctor();
 
   const [profile, setProfile] = useState({
@@ -19,6 +19,7 @@ const DoctorProfile = () => {
   // Pre-fill form with current doctor's data whenever the selected doctor changes
   useEffect(() => {
     if (currentDoc) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProfile({
         name: currentDoc.name || '',
         specialty: currentDoc.specialty || '',

@@ -5,7 +5,7 @@ import { Check, X, FileText, Calendar, Clock, Users, AlertCircle } from 'lucide-
 const DoctorDashboard = () => {
   const { getDoctorAppointments, updateAppointmentStatus, issuePrescription, currentDoctorId, getCurrentDoctor } = useApp();
   const appointments = getDoctorAppointments();
-  const currentDoc = getCurrentDoctor();
+  void getCurrentDoctor;
 
   const [prescriptionModal, setPrescriptionModal] = useState(null);
   const [prescriptionText, setPrescriptionText] = useState('');

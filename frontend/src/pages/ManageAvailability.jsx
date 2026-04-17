@@ -6,7 +6,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 const ManageAvailability = () => {
   const [slots, setSlots] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [newSlot, setNewSlot] = useState({ dayOfWeek: 'Monday', startTime: '09:00', endTime: '17:00' });
   const [showAdd, setShowAdd] = useState(false);
 

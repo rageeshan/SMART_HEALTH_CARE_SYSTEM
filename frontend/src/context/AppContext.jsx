@@ -40,10 +40,14 @@ export const AppProvider = ({ children }) => {
     if (!userId) return; // if not logged in, don't fetch
 
     if (role === 'Patient') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchDoctors();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchAppointments();
     } else if (role === 'Doctor') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchDoctorProfile();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchAppointments();
     }
   }, [role, userId, fetchDoctors, fetchAppointments, fetchDoctorProfile]);
@@ -112,4 +116,5 @@ export const AppProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useApp = () => useContext(AppContext);
