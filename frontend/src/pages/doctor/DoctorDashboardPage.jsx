@@ -4,6 +4,8 @@ import toast from 'react-hot-toast'
 import { Clock, Plus, Trash2, Save } from 'lucide-react'
 import { patientApi } from '../../api/patientApi.js'
 import { doctorApi } from '../../api/doctorApi.js'
+import { appointmentApi } from '../../api/appointmentApi.js'
+import { telemedicineApi } from '../../api/telemedicineApi.js'
 import { getApiErrorMessage, isNotFoundError } from '../../api/error.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { Badge } from '../../components/ui/Badge.jsx'
@@ -46,6 +48,14 @@ export function DoctorDashboardPage() {
     endTime: '17:00',
   })
 
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true)
+  const [appointments, setAppointments] = useState([])
+  const [appointmentsBusy, setAppointmentsBusy] = useState(false)
+  const [joiningAppointmentId, setJoiningAppointmentId] = useState(null)
+  const [endingAppointmentId, setEndingAppointmentId] = useState(null)
+  const [rxModal, setRxModal] = useState(null)
+  const [rxText, setRxText] = useState('')
+
   const displayName = useMemo(() => {
     return getUserDisplayName(user, 'Doctor')
   }, [user])
@@ -79,6 +89,24 @@ export function DoctorDashboardPage() {
 
   useEffect(() => {
     loadDoctorProfile()
+  }, [])
+
+  async function loadAppointments() {
+    setAppointmentsLoading(true)
+    try {
+      const res = await appointmentApi.getDoctorAppointments()
+      const list = res?.data ?? res?.appointments ?? res ?? []
+      setAppointments(Array.isArray(list) ? list : [])
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
+      setAppointments([])
+    } finally {
+      setAppointmentsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAppointments()
   }, [])
 
   const groupedAvailability = useMemo(() => {
@@ -204,6 +232,85 @@ export function DoctorDashboardPage() {
     }
   }
 
+  function statusVariant(status) {
+    const s = String(status || '').toUpperCase()
+    if (s === 'APPROVED') return 'success'
+    if (s === 'REJECTED') return 'danger'
+    if (s === 'COMPLETED') return 'info'
+    return 'warning'
+  }
+
+  async function setStatus(appointmentId, status) {
+    setAppointmentsBusy(true)
+    try {
+      await appointmentApi.updateStatus(appointmentId, status)
+      toast.success(`Appointment ${String(status).toLowerCase()}`)
+      await loadAppointments()
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
+    } finally {
+      setAppointmentsBusy(false)
+    }
+  }
+
+  async function submitPrescription() {
+    if (!rxModal) return
+    if (!rxText.trim()) {
+      toast.error('Prescription is required')
+      return
+    }
+    setAppointmentsBusy(true)
+    try {
+      await appointmentApi.issuePrescription(rxModal._id ?? rxModal.id, rxText.trim())
+      toast.success('Prescription issued')
+      setRxModal(null)
+      setRxText('')
+      await loadAppointments()
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
+    } finally {
+      setAppointmentsBusy(false)
+    }
+  }
+
+  async function joinCall(appointment) {
+    const appointmentId = appointment?._id ?? appointment?.id
+    if (!appointmentId) return
+
+    setJoiningAppointmentId(appointmentId)
+    try {
+      const session = await telemedicineApi.joinSession(appointmentId)
+      const meetingUrl =
+        session?.meetingUrl ?? appointment?.telemedicine?.meetingUrl ?? null
+      if (!meetingUrl) {
+        toast.error('Meeting link not available.')
+        return
+      }
+      window.open(meetingUrl, '_blank', 'noopener,noreferrer')
+      await loadAppointments()
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
+    } finally {
+      setJoiningAppointmentId(null)
+    }
+  }
+
+  async function endCall(appointment) {
+    const appointmentId = appointment?._id ?? appointment?.id
+    if (!appointmentId) return
+
+    setEndingAppointmentId(appointmentId)
+    try {
+      await telemedicineApi.endSession(appointmentId)
+      toast.success('Call ended')
+      await loadAppointments()
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
+    } finally {
+      setEndingAppointmentId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -218,6 +325,133 @@ export function DoctorDashboardPage() {
           <div className="mt-2 text-sm text-slate-600">
             Use patient lookup to view profiles and manage medical history records.
           </div>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">Appointments</div>
+              <div className="text-xs text-slate-500">
+                Approve, reject, and issue prescriptions.
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={loadAppointments}
+              disabled={appointmentsLoading || appointmentsBusy}
+            >
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardBody>
+          {appointmentsLoading ? (
+            <div className="text-sm text-slate-600">Loading…</div>
+          ) : appointments.length === 0 ? (
+            <EmptyState
+              title="No appointments yet"
+              description="When patients book you, requests will appear here."
+            />
+          ) : (
+            <div className="space-y-3">
+              {appointments.map((a) => {
+                const id = a._id ?? a.id
+                const dateLabel = a.date
+                  ? new Date(a.date).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : '—'
+
+                return (
+                  <div
+                    key={id}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900">
+                          Patient ID: {a.patientId}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {dateLabel} · {a.timeSlot}
+                        </div>
+                        {a.symptoms ? (
+                          <div className="mt-2 text-sm text-slate-700">
+                            <span className="font-semibold">Symptoms:</span> {a.symptoms}
+                          </div>
+                        ) : null}
+                        {a.telemedicine?.meetingUrl ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => joinCall(a)}
+                              disabled={joiningAppointmentId === id}
+                            >
+                              {joiningAppointmentId === id ? 'Joining…' : 'Join call'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={() => endCall(a)}
+                              disabled={endingAppointmentId === id}
+                            >
+                              {endingAppointmentId === id ? 'Ending…' : 'End call'}
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge variant={statusVariant(a.status)}>
+                          {String(a.status ?? 'PENDING')}
+                        </Badge>
+                        <div className="flex flex-wrap gap-2">
+                          {String(a.status ?? '').toUpperCase() === 'PENDING' ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => setStatus(id, 'APPROVED')}
+                                disabled={appointmentsBusy}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => setStatus(id, 'REJECTED')}
+                                disabled={appointmentsBusy}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          ) : null}
+
+                          {String(a.status ?? '').toUpperCase() === 'APPROVED' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setRxModal(a)
+                                setRxText(a.prescription ?? '')
+                              }}
+                              disabled={appointmentsBusy}
+                            >
+                              Issue prescription
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </CardBody>
       </Card>
 
@@ -373,6 +607,49 @@ export function DoctorDashboardPage() {
             />
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(rxModal)}
+        title="Issue prescription"
+        onClose={() => (appointmentsBusy ? null : setRxModal(null))}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setRxModal(null)}
+              disabled={appointmentsBusy}
+            >
+              Cancel
+            </Button>
+            <Button onClick={submitPrescription} disabled={appointmentsBusy}>
+              {appointmentsBusy ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        }
+      >
+        {rxModal ? (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div className="font-semibold text-slate-900">
+                Appointment · {rxModal.timeSlot}
+              </div>
+              <div className="text-xs text-slate-600">
+                Patient ID: {rxModal.patientId}
+              </div>
+            </div>
+            <label className="block text-sm font-medium text-slate-700">
+              Prescription
+              <textarea
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200"
+                rows={4}
+                value={rxText}
+                onChange={(e) => setRxText(e.target.value)}
+                placeholder="Medications, dosage, instructions…"
+              />
+            </label>
+          </div>
+        ) : null}
       </Modal>
 
       <Card>

@@ -18,6 +18,7 @@ import { PatientMedicalHistoryPage } from "./pages/patient/PatientMedicalHistory
 import { PatientBrowseDoctorsPage } from "./pages/patient/PatientBrowseDoctorsPage.jsx";
 import { PatientReportsPage } from "./pages/patient/PatientReportsPage.jsx";
 import { PatientPrescriptionsPage } from "./pages/patient/PatientPrescriptionsPage.jsx";
+import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage.jsx";
 
 import { DoctorDashboardPage } from "./pages/doctor/DoctorDashboardPage.jsx";
 import { DoctorPatientPage } from "./pages/doctor/DoctorPatientPage.jsx";
@@ -58,6 +59,7 @@ export default function App() {
             path="/patient/doctors"
             element={<PatientBrowseDoctorsPage />}
           />
+          <Route path="/patient/appointments" element={<PatientAppointmentsPage />} />
           <Route
             path="/patient/profile/create"
             element={<PatientProfileCreatePage />}

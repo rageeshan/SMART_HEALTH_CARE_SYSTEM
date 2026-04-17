@@ -3,6 +3,24 @@ const axios = require('axios');
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:5000/api/auth';
 const DOCTOR_SERVICE_URL = process.env.DOCTOR_SERVICE_URL || 'http://localhost:5003/api/doctors';
+const TELEMEDICINE_SERVICE_URL =
+  process.env.TELEMEDICINE_SERVICE_URL || 'http://localhost:5006/api/sessions';
+const NOTIFICATION_SERVICE_URL =
+  process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5005/api/notifications';
+
+async function sendEmailNotification({ appointmentId, userId, email, message }) {
+  if (!email) return;
+  try {
+    await axios.post(`${NOTIFICATION_SERVICE_URL}/send-test`, {
+      appointmentId,
+      userId,
+      email,
+      message,
+    });
+  } catch (err) {
+    console.warn('Notification failed:', err?.response?.data?.message ?? err.message);
+  }
+}
 
 function getDayOfWeek(dateString) {
   const d = new Date(dateString);
@@ -52,16 +70,19 @@ exports.bookAppointment = async (req, res) => {
     }
 
     // Check if doctor exists via auth-service (verified + active doctors list)
+    // and capture doctor email for notifications.
+    let doctorEmail = null;
     try {
       const { data } = await axios.get(`${AUTH_SERVICE_URL}/doctors`, {
         headers: { authorization: req.headers.authorization },
       });
 
       const doctors = Array.isArray(data?.data) ? data.data : [];
-      const exists = doctors.some((d) => String(d?._id) === String(doctorId));
-      if (!exists) {
+      const doctor = doctors.find((d) => String(d?._id) === String(doctorId));
+      if (!doctor) {
         return res.status(404).json({ message: 'Doctor not found or not verified' });
       }
+      doctorEmail = doctor.email ?? null;
     } catch (err) {
       return res.status(500).json({ message: 'Error communicating with auth-service' });
     }
@@ -99,9 +120,19 @@ exports.bookAppointment = async (req, res) => {
     const appointment = await Appointment.create({
       doctorId,
       patientId: req.user.userId,
+      patientEmail: req.user.email ?? null,
+      doctorEmail,
       date,
       timeSlot,
       symptoms
+    });
+
+    // Notify doctor of new booking (best-effort)
+    await sendEmailNotification({
+      appointmentId: appointment._id,
+      userId: doctorId,
+      email: doctorEmail,
+      message: `New appointment request: ${new Date(date).toDateString()} ${timeSlot}.`,
     });
 
     res.status(201).json(appointment);
@@ -185,6 +216,53 @@ exports.updateStatus = async (req, res) => {
     }
 
     appointment.status = status;
+
+    // When approved, create (or reuse) telemedicine session and notify both sides.
+    if (status === 'APPROVED') {
+      try {
+        const { data: session } = await axios.post(`${TELEMEDICINE_SERVICE_URL}/create`, {
+          appointmentId: String(appointment._id),
+          doctorId: String(appointment.doctorId),
+          patientId: String(appointment.patientId),
+        });
+
+        appointment.telemedicine = {
+          roomId: session.roomId ?? null,
+          meetingUrl: session.meetingUrl ?? null,
+          status: session.status ?? null,
+        };
+
+        const when = `${new Date(appointment.date).toDateString()} ${appointment.timeSlot}`;
+        const link = appointment.telemedicine.meetingUrl
+          ? ` Join link: ${appointment.telemedicine.meetingUrl}`
+          : '';
+
+        await sendEmailNotification({
+          appointmentId: appointment._id,
+          userId: appointment.patientId,
+          email: appointment.patientEmail,
+          message: `Your appointment was approved for ${when}.${link}`,
+        });
+        await sendEmailNotification({
+          appointmentId: appointment._id,
+          userId: appointment.doctorId,
+          email: appointment.doctorEmail,
+          message: `Appointment approved for ${when}.${link}`,
+        });
+      } catch (err) {
+        console.warn('Telemedicine session create failed:', err?.response?.data?.message ?? err.message);
+      }
+    }
+
+    if (status === 'REJECTED') {
+      await sendEmailNotification({
+        appointmentId: appointment._id,
+        userId: appointment.patientId,
+        email: appointment.patientEmail,
+        message: `Your appointment request was rejected.`,
+      });
+    }
+
     await appointment.save();
 
     res.status(200).json(appointment);

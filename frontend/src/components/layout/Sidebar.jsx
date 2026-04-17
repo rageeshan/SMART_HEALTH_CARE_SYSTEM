@@ -56,6 +56,7 @@ export function Sidebar({ onClose }) {
             </div>
             <NavItem to="/patient/dashboard" label="Dashboard" />
             <NavItem to="/patient/doctors" label="Browse doctors" />
+            <NavItem to="/patient/appointments" label="My appointments" />
             <NavItem to="/patient/profile/create" label="Create profile" />
             <NavItem to="/patient/profile/edit" label="Edit profile" />
             <NavItem to="/patient/medical-history" label="Medical history" />

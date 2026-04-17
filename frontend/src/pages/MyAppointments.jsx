@@ -43,6 +43,16 @@ const MyAppointments = () => {
                   <span><Clock size={14} /> {app.timeSlot}</span>
                 </div>
                 <p className="appt-symptoms"><strong>Symptoms:</strong> {app.symptoms}</p>
+                {app.telemedicine?.meetingUrl ? (
+                  <div className="prescription-box">
+                    <span>
+                      <strong>Telemedicine:</strong>{' '}
+                      <a href={app.telemedicine.meetingUrl} target="_blank" rel="noreferrer">
+                        Join meeting
+                      </a>
+                    </span>
+                  </div>
+                ) : null}
                 {app.prescription && (
                   <div className="prescription-box">
                     <FileText size={14} />
