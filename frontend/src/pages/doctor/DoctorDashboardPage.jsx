@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { patientApi } from '../../api/patientApi.js'
+import { getApiErrorMessage, isNotFoundError } from '../../api/error.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { Badge } from '../../components/ui/Badge.jsx'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card.jsx'
@@ -16,6 +19,8 @@ export function DoctorDashboardPage() {
   const [patients] = useState(() => getRecentPatients())
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  const [lookupMessage, setLookupMessage] = useState('')
+  const [isLookingUp, setIsLookingUp] = useState(false)
 
   const displayName = useMemo(() => {
     return getUserDisplayName(user, 'Doctor')
@@ -39,6 +44,52 @@ export function DoctorDashboardPage() {
   const startIndex = (safePage - 1) * PAGE_SIZE
   const visiblePatients = filteredPatients.slice(startIndex, startIndex + PAGE_SIZE)
 
+  async function handlePatientLookup() {
+    const term = patientId.trim()
+    if (!term) return
+
+    setLookupMessage('')
+
+    const exactIdMatch = patients.find((patient) => patient.id === term)
+    if (exactIdMatch) {
+      navigate(`/doctor/patients/${encodeURIComponent(exactIdMatch.id)}`)
+      return
+    }
+
+    const byNameMatches = patients.filter((patient) =>
+      String(patient.fullName ?? '').toLowerCase().includes(term.toLowerCase()),
+    )
+
+    if (byNameMatches.length === 1) {
+      navigate(`/doctor/patients/${encodeURIComponent(byNameMatches[0].id)}`)
+      return
+    }
+
+    if (byNameMatches.length > 1) {
+      setQuery(term)
+      setPage(1)
+      setLookupMessage(
+        `Found ${byNameMatches.length} matches by name. Select the right patient below.`,
+      )
+      return
+    }
+
+    // Validate patient existence before navigation; show popup on miss.
+    setIsLookingUp(true)
+    try {
+      await patientApi.getProfile(term)
+      navigate(`/doctor/patients/${encodeURIComponent(term)}`)
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        toast.error('Patient not found.')
+      } else {
+        toast.error(getApiErrorMessage(err))
+      }
+    } finally {
+      setIsLookingUp(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -57,28 +108,32 @@ export function DoctorDashboardPage() {
         <CardHeader>
           <div className="text-sm font-semibold text-slate-900">Patient lookup</div>
           <div className="text-xs text-slate-500">
-            Enter a patient ID to open their profile.
+            Search by patient ID or patient name.
           </div>
         </CardHeader>
         <CardBody>
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <Input
-              label="Patient ID"
+              label="Patient ID or name"
               name="patientId"
-              placeholder="e.g., 66123abc..."
+              placeholder="e.g., 66123abc... or Ramesh"
               value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
+              onChange={(e) => {
+                setPatientId(e.target.value)
+                setLookupMessage('')
+              }}
             />
             <Button
               className="w-full sm:w-auto"
-              onClick={() => {
-                const id = patientId.trim()
-                if (id) navigate(`/doctor/patients/${encodeURIComponent(id)}`)
-              }}
+              onClick={handlePatientLookup}
+              disabled={isLookingUp}
             >
-              Search
+              {isLookingUp ? 'Searching…' : 'Search'}
             </Button>
           </div>
+          {lookupMessage ? (
+            <p className="mt-3 text-sm font-medium text-sky-700">{lookupMessage}</p>
+          ) : null}
         </CardBody>
       </Card>
 

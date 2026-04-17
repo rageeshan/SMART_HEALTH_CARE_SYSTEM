@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { patientApi } from '../../api/patientApi.js'
-import { getApiErrorMessage } from '../../api/error.js'
+import { getApiErrorMessage, isNotFoundError } from '../../api/error.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card.jsx'
 import { Skeleton } from '../../components/ui/Skeleton.jsx'
@@ -15,6 +15,16 @@ import { getUserDisplayName } from '../../utils/userProfile.js'
 
 function normalizeProfile(data) {
   return data?.profile ?? data?.data ?? data ?? null
+}
+
+function normalizeMedicalHistory(data) {
+  const items =
+    data?.records ??
+    data?.medicalHistory ??
+    data?.data?.medicalHistory ??
+    data?.data ??
+    []
+  return Array.isArray(items) ? items : []
 }
 
 export function PatientDashboardPage() {
@@ -33,23 +43,23 @@ export function PatientDashboardPage() {
   async function load() {
     setLoading(true)
     try {
-      const [p, h] = await Promise.allSettled([
-        patientApi.getMyProfile(),
-        patientApi.getMyMedicalHistory(),
-      ])
+      const profileRes = await patientApi.getMyProfile()
+      const nextProfile = normalizeProfile(profileRes)
+      setProfile(nextProfile)
 
-      if (p.status === 'fulfilled') {
-        setProfile(normalizeProfile(p.value))
-      } else {
-        // If profile not found, backend may respond 404; keep null.
-        setProfile(null)
-      }
-
-      if (h.status === 'fulfilled') {
-        const items = h.value?.records ?? h.value?.data ?? h.value ?? []
-        setHistory(Array.isArray(items) ? items : [])
+      if (nextProfile) {
+        const historyRes = await patientApi.getMyMedicalHistory()
+        setHistory(normalizeMedicalHistory(historyRes))
       } else {
         setHistory([])
+      }
+    } catch (err) {
+      // 404 here means profile doesn't exist yet; show create-profile UI instead.
+      if (isNotFoundError(err)) {
+        setProfile(null)
+        setHistory([])
+      } else {
+        toast.error(getApiErrorMessage(err))
       }
     } finally {
       setLoading(false)

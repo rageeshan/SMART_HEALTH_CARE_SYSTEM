@@ -12,9 +12,10 @@ import { storage } from '../../utils/storage.js'
 export function VerifyRegisterOtpPage() {
   const { verifyRegisterOtp } = useAuth()
   const navigate = useNavigate()
+  const pendingRegisterData = storage.getPendingRegisterData()
   const [form, setForm] = useState(() => ({
-    email: storage.getPendingEmail() ?? '',
-    role: storage.getPendingRole() ?? '',
+    email: storage.getPendingEmail() ?? pendingRegisterData?.email ?? '',
+    role: storage.getPendingRole() ?? pendingRegisterData?.role ?? '',
     otp: '',
   }))
   const [submitting, setSubmitting] = useState(false)
@@ -29,9 +30,19 @@ export function VerifyRegisterOtpPage() {
       return
     }
 
+    if (
+      !pendingRegisterData?.fullName?.trim() ||
+      !pendingRegisterData?.password?.trim()
+    ) {
+      setError('Registration session expired. Please register again.')
+      return
+    }
+
     setSubmitting(true)
     const payload = {
+      fullName: pendingRegisterData.fullName,
       email: form.email.trim(),
+      password: pendingRegisterData.password,
       otp: form.otp.trim(),
     }
     if (form.role) payload.role = String(form.role).toLowerCase()
@@ -47,6 +58,7 @@ export function VerifyRegisterOtpPage() {
     toast.success(res.data?.message ?? 'Registration verified. Please login.')
     storage.clearPendingEmail()
     storage.clearPendingRole()
+    storage.clearPendingRegisterData()
     navigate('/login', { replace: true })
   }
 

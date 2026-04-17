@@ -15,6 +15,7 @@ import {
 } from '../../components/patient/MedicalHistoryForm.jsx'
 import { emptyMedicalRecord } from '../../components/patient/models.js'
 import { saveRecentPatient } from '../../utils/doctorRecentPatients.js'
+import { Alert } from '../../components/ui/Alert.jsx'
 
 function statusVariant(status) {
   const s = String(status ?? '').toLowerCase()
@@ -33,6 +34,7 @@ export function DoctorPatientPage() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [records, setRecords] = useState([])
+  const [fetchError, setFetchError] = useState('')
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null) // record or null
@@ -43,20 +45,48 @@ export function DoctorPatientPage() {
 
   async function load() {
     setLoading(true)
+    setFetchError('')
     try {
-      const [p, h] = await Promise.all([
+      const [p, h] = await Promise.allSettled([
         patientApi.getProfile(patientId),
         patientApi.getMedicalHistory(patientId),
       ])
-      const nextProfile = normalizeProfile(p)
-      setProfile(nextProfile)
-      if (nextProfile) saveRecentPatient(nextProfile, patientId)
-      const items = h?.records ?? h?.data ?? h ?? []
-      setRecords(Array.isArray(items) ? items : [])
-    } catch (err) {
-      toast.error(getApiErrorMessage(err))
-      setProfile(null)
-      setRecords([])
+
+      if (p.status === 'fulfilled') {
+        const nextProfile = normalizeProfile(p.value)
+        setProfile(nextProfile)
+        if (nextProfile) saveRecentPatient(nextProfile, patientId)
+      } else {
+        setProfile(null)
+      }
+
+      if (h.status === 'fulfilled') {
+        const items =
+          h.value?.records ??
+          h.value?.medicalHistory ??
+          h.value?.data?.medicalHistory ??
+          h.value?.data ??
+          []
+        setRecords(Array.isArray(items) ? items : [])
+      } else {
+        setRecords([])
+      }
+
+      if (p.status === 'rejected' && h.status === 'rejected') {
+        const message = getApiErrorMessage(
+          p.reason,
+          getApiErrorMessage(h.reason, 'Unable to fetch patient data'),
+        )
+        setFetchError(message)
+        toast.error(message)
+      } else if (p.status === 'rejected') {
+        const message = getApiErrorMessage(p.reason)
+        setFetchError(message)
+      } else if (h.status === 'rejected') {
+        // Allow profile to remain visible if only history fails.
+        const message = getApiErrorMessage(h.reason)
+        setFetchError(`Profile loaded, but history failed: ${message}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -137,6 +167,12 @@ export function DoctorPatientPage() {
 
   return (
     <div className="space-y-6">
+      {fetchError ? (
+        <Alert variant="warning" title="Fetch warning">
+          {fetchError}
+        </Alert>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>

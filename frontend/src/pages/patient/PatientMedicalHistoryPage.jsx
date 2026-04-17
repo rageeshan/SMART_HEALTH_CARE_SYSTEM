@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { patientApi } from '../../api/patientApi.js'
-import { getApiErrorMessage } from '../../api/error.js'
+import { getApiErrorMessage, isNotFoundError } from '../../api/error.js'
 import { Badge } from '../../components/ui/Badge.jsx'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card.jsx'
 import { EmptyState } from '../../components/ui/EmptyState.jsx'
@@ -24,10 +24,17 @@ export function PatientMedicalHistoryPage() {
     setLoading(true)
     try {
       const res = await patientApi.getMyMedicalHistory()
-      const items = res?.records ?? res?.data ?? res ?? []
+      const items =
+        res?.records ??
+        res?.medicalHistory ??
+        res?.data?.medicalHistory ??
+        res?.data ??
+        []
       setRecords(Array.isArray(items) ? items : [])
     } catch (err) {
-      toast.error(getApiErrorMessage(err))
+      if (!isNotFoundError(err)) {
+        toast.error(getApiErrorMessage(err))
+      }
       setRecords([])
     } finally {
       setLoading(false)

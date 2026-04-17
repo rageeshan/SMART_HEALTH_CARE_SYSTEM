@@ -46,6 +46,7 @@ export function AuthProvider({ children }) {
     if (!existing) return null
     if (isJwtExpired(existing)) {
       storage.clearToken()
+      storage.clearUser()
       return null
     }
     return existing
@@ -59,6 +60,8 @@ export function AuthProvider({ children }) {
 
   const [user, setUser] = useState(() => {
     if (!token) return null
+    const storedUser = storage.getUser()
+    if (storedUser) return storedUser
     const decoded = decodeJwt(token)
     return decoded?.user ?? decoded ?? null
   })
@@ -76,15 +79,20 @@ export function AuthProvider({ children }) {
     setRole(nextRole)
 
     const decoded = decodeJwt(nextToken)
-    setUser(payload?.user ?? payload?.data?.user ?? decoded?.user ?? decoded ?? null)
+    const nextUser =
+      payload?.user ?? payload?.data?.user ?? decoded?.user ?? decoded ?? null
+    setUser(nextUser)
+    if (nextUser) storage.setUser(nextUser)
 
     return { ok: true, token: nextToken, role: nextRole }
   }, [])
 
   const logout = useCallback((message) => {
     storage.clearToken()
+    storage.clearUser()
     storage.clearPendingEmail()
     storage.clearPendingRole()
+    storage.clearPendingRegisterData()
     setToken(null)
     setRole(null)
     setUser(null)
@@ -96,6 +104,12 @@ export function AuthProvider({ children }) {
       const res = await authApi.register(payload)
       storage.setPendingEmail(payload?.email ?? res?.email ?? '')
       if (payload?.role) storage.setPendingRole(String(payload.role).toLowerCase())
+      storage.setPendingRegisterData({
+        fullName: payload?.fullName ?? '',
+        email: payload?.email ?? '',
+        password: payload?.password ?? '',
+        role: payload?.role ?? '',
+      })
       return { ok: true, data: res }
     } catch (err) {
       return { ok: false, message: getApiErrorMessage(err) }

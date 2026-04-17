@@ -10,3 +10,11 @@ export function getApiErrorMessage(err, fallback = 'Something went wrong') {
   return fallback
 }
 
+export function getApiStatus(err) {
+  return Number(err?.response?.status ?? 0)
+}
+
+export function isNotFoundError(err) {
+  return getApiStatus(err) === 404
+}
+

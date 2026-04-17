@@ -1,9 +1,45 @@
 import { patientClient } from './clients.js'
 
+function toStringArray(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+function normalizeProfilePayload(payload = {}) {
+  const normalized = { ...payload }
+  if ('allergies' in normalized) {
+    normalized.allergies = toStringArray(normalized.allergies)
+  }
+  return normalized
+}
+
+function normalizeMedicalHistoryPayload(payload = {}) {
+  const normalized = { ...payload }
+  if ('medications' in normalized) {
+    normalized.medications = toStringArray(normalized.medications)
+  }
+  return normalized
+}
+
 export const patientApi = {
   // Patient self
   async createProfile(payload) {
-    const { data } = await patientClient.post('/create', payload)
+    const { data } = await patientClient.post(
+      '/create',
+      normalizeProfilePayload(payload),
+    )
     return data
   },
   async getMyProfile() {
@@ -11,7 +47,10 @@ export const patientApi = {
     return data
   },
   async updateMyProfile(payload) {
-    const { data } = await patientClient.put('/me', payload)
+    const { data } = await patientClient.put(
+      '/me',
+      normalizeProfilePayload(payload),
+    )
     return data
   },
   async getMyMedicalHistory() {
@@ -31,14 +70,14 @@ export const patientApi = {
   async addMedicalHistory(patientId, payload) {
     const { data } = await patientClient.post(
       `/${patientId}/medical-history`,
-      payload,
+      normalizeMedicalHistoryPayload(payload),
     )
     return data
   },
   async updateMedicalHistory(patientId, recordId, payload) {
     const { data } = await patientClient.put(
       `/${patientId}/medical-history/${recordId}`,
-      payload,
+      normalizeMedicalHistoryPayload(payload),
     )
     return data
   },
@@ -51,7 +90,10 @@ export const patientApi = {
 
   // Admin (profile mgmt)
   async adminUpdateProfile(patientId, payload) {
-    const { data } = await patientClient.put(`/admin/${patientId}`, payload)
+    const { data } = await patientClient.put(
+      `/admin/${patientId}`,
+      normalizeProfilePayload(payload),
+    )
     return data
   },
   async adminDeleteProfile(patientId) {
