@@ -1,0 +1,188 @@
+version: "3.9"
+
+# ===========================================================
+#  Smart Health Care System – Docker Compose
+#  Usage:
+#    docker compose up --build        # start all services
+#    docker compose up --build -d     # detached mode
+#    docker compose down              # stop & remove containers
+# ===========================================================
+
+networks:
+  healthcare-net:
+    driver: bridge
+
+services:
+
+  # ── RabbitMQ (message broker) ───────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI  →  http://localhost:15672  (guest/guest)
+    networks:
+      - healthcare-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Auth Service  (PORT 5001) ────────────────────────────
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    env_file:
+      - ./services/auth-service/.env
+    environment:
+      PORT: 5001
+    ports:
+      - "5001:5001"
+    networks:
+      - healthcare-net
+
+  # ── Patient Service  (PORT 5002) ─────────────────────────
+  patient-service:
+    build:
+      context: ./services/patient-service
+      dockerfile: Dockerfile
+    container_name: patient-service
+    restart: unless-stopped
+    env_file:
+      - ./services/patient-service/.env
+    environment:
+      PORT: 5002
+    ports:
+      - "5002:5002"
+    networks:
+      - healthcare-net
+
+  # ── Appointment Service  (PORT 5003) ─────────────────────
+  appointment-service:
+    build:
+      context: ./services/appointment-service
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    restart: unless-stopped
+    env_file:
+      - ./services/appointment-service/.env
+    environment:
+      PORT: 5003
+    ports:
+      - "5003:5003"
+    networks:
+      - healthcare-net
+
+  # ── Doctor Service  (PORT 5004) ──────────────────────────
+  doctor-service:
+    build:
+      context: ./services/doctor-service
+      dockerfile: Dockerfile
+    container_name: doctor-service
+    restart: unless-stopped
+    env_file:
+      - ./services/doctor-service/.env
+    environment:
+      PORT: 5004
+    ports:
+      - "5004:5004"
+    networks:
+      - healthcare-net
+
+  # ── Notification Service  (PORT 5005) ────────────────────
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: unless-stopped
+    env_file:
+      - ./services/notification-service/.env
+    environment:
+      PORT: 5005
+      RABBITMQ_URI: amqp://rabbitmq
+    ports:
+      - "5005:5005"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
+  # ── Telemedicine Service  (PORT 5006) ────────────────────
+  telemedicine-service:
+    build:
+      context: ./services/telemedicine-service
+      dockerfile: Dockerfile
+    container_name: telemedicine-service
+    restart: unless-stopped
+    env_file:
+      - ./services/telemedicine-service/.env
+    environment:
+      PORT: 5006
+      RABBITMQ_URI: amqp://rabbitmq
+    ports:
+      - "5006:5006"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
+  # ── AI Symptom Service  (PORT 5007) ──────────────────────
+  ai-symptom-service:
+    build:
+      context: ./services/ai-symptom-service
+      dockerfile: Dockerfile
+    container_name: ai-symptom-service
+    restart: unless-stopped
+    env_file:
+      - ./services/ai-symptom-service/.env
+    environment:
+      PORT: 5007
+    ports:
+      - "5007:5007"
+    networks:
+      - healthcare-net
+
+  # ── Payment Service  (PORT 5008) ─────────────────────────
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    restart: unless-stopped
+    env_file:
+      - ./services/payment-service/.env
+    environment:
+      PORT: 5008
+    ports:
+      - "5008:5008"
+    networks:
+      - healthcare-net
+
+  # ── Frontend  (PORT 80) ───────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_AUTH_BASE_URL: http://localhost:5001/api/auth
+        VITE_PATIENT_BASE_URL: http://localhost:5002/api/patients
+        VITE_SYMPTOM_API_URL: http://localhost:5007/api/symptoms
+        VITE_PAYMENT_API_URL: http://localhost:5008/api/payments
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - auth-service
+      - patient-service
+      - ai-symptom-service
+      - payment-service
+    networks:
+      - healthcare-net
