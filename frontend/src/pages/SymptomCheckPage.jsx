@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const SYMPTOM_API =
-  import.meta.env.VITE_SYMPTOM_API_URL || "http://localhost:5003/api/symptoms";
+  import.meta.env.VITE_SYMPTOM_API_URL || "http://localhost:5007/api/symptoms";
 
 export function SymptomCheckPage() {
   const [patientId, setPatientId] = useState("");
@@ -48,8 +48,7 @@ export function SymptomCheckPage() {
   };
 
   const ai = result?.aiResponse;
-  const plainText =
-    typeof result?.result === "string" ? result.result : null;
+  const plainText = typeof result?.result === "string" ? result.result : null;
 
   return (
     <section className="mx-auto w-full max-w-2xl rounded-2xl bg-white p-8 shadow-sm">
@@ -176,7 +175,9 @@ export function SymptomCheckPage() {
           ) : null}
 
           {result.checkId ? (
-            <p className="text-xs text-slate-500">Check ID: {String(result.checkId)}</p>
+            <p className="text-xs text-slate-500">
+              Check ID: {String(result.checkId)}
+            </p>
           ) : null}
         </div>
       ) : null}

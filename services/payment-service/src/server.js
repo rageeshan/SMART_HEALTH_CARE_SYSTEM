@@ -6,7 +6,7 @@ import cors from "cors";
 import { connectDB } from "./config/db.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
-const PORT = process.env.PORT || 5003;
+const PORT = process.env.PORT || 5008;
 
 const app = express();
 

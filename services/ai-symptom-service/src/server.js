@@ -6,7 +6,7 @@ import cors from "cors";
 import { connectDB } from "./config/db.js";
 import symptomRoutes from "./routes/symptomRoutes.js";
 
-const PORT = process.env.PORT || 5003;
+const PORT = process.env.PORT || 5007;
 
 const app = express();
 

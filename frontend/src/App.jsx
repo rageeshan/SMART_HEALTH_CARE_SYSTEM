@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router-dom";
-import { SymptomCheckPage, SymptomHistoryPage } from "./pages/SymptomCheckPage.jsx";
+import {
+  BrowserRouter,
+  Link,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
+import {
+  SymptomCheckPage,
+  SymptomHistoryPage,
+} from "./pages/SymptomCheckPage.jsx";
 
 const PAYMENT_API =
-  import.meta.env.VITE_PAYMENT_API_URL || "http://localhost:5002/api/payments";
+  import.meta.env.VITE_PAYMENT_API_URL || "http://localhost:5008/api/payments";
 
 const INITIAL_FORM = {
   appointmentId: "",
@@ -59,23 +68,30 @@ function PaymentForm() {
 
   return (
     <section className="mx-auto w-full max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
-      <h1 className="text-2xl font-semibold text-slate-900">Pay Consultation Fee</h1>
+      <h1 className="text-2xl font-semibold text-slate-900">
+        Pay Consultation Fee
+      </h1>
       <p className="mt-2 text-sm text-slate-600">
         Fill the details and continue to Stripe checkout.
       </p>
 
-      <form className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+      <form
+        className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2"
+        onSubmit={handleSubmit}
+      >
         {Object.entries(INITIAL_FORM).map(([field]) => (
           <label key={field} className="text-sm font-medium text-slate-700">
-            {field.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
+            {field
+              .replace(/([A-Z])/g, " $1")
+              .replace(/^./, (s) => s.toUpperCase())}
             <input
               required
               type={
                 field === "email"
                   ? "email"
                   : field === "amount"
-                    ? "number"
-                    : "text"
+                  ? "number"
+                  : "text"
               }
               step={field === "amount" ? "0.01" : undefined}
               min={field === "amount" ? "0" : undefined}
@@ -107,7 +123,10 @@ function PaymentForm() {
 
 function PaymentResult({ title, tone }) {
   const location = useLocation();
-  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const params = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  );
   const sessionId = params.get("session_id");
   const isSuccessPage = location.pathname === "/payment/success";
   const [verifyMessage, setVerifyMessage] = useState("");
@@ -121,7 +140,9 @@ function PaymentResult({ title, tone }) {
 
       try {
         const response = await fetch(
-          `${PAYMENT_API}/stripe/session/${encodeURIComponent(sessionId)}/verify`
+          `${PAYMENT_API}/stripe/session/${encodeURIComponent(
+            sessionId
+          )}/verify`
         );
         const data = await response.json();
 
@@ -142,7 +163,10 @@ function PaymentResult({ title, tone }) {
     <section className="mx-auto w-full max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm">
       <h2 className={`text-2xl font-semibold ${tone}`}>{title}</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Session ID: <span className="font-medium">{params.get("session_id") || "Unavailable"}</span>
+        Session ID:{" "}
+        <span className="font-medium">
+          {params.get("session_id") || "Unavailable"}
+        </span>
       </p>
       <p className="mt-4 text-sm text-slate-600">
         You can now return to payment dashboard and check status.
@@ -173,7 +197,9 @@ function PaymentStatusPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${PAYMENT_API}/my?patientId=${encodeURIComponent(patientId)}`);
+      const response = await fetch(
+        `${PAYMENT_API}/my?patientId=${encodeURIComponent(patientId)}`
+      );
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || "Failed to load payments");
@@ -188,7 +214,9 @@ function PaymentStatusPage() {
 
   return (
     <section className="mx-auto mt-6 w-full max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
-      <h2 className="text-xl font-semibold text-slate-900">Check Payment Status</h2>
+      <h2 className="text-xl font-semibold text-slate-900">
+        Check Payment Status
+      </h2>
       <div className="mt-4 flex flex-col gap-3 md:flex-row">
         <input
           placeholder="Enter patient ID"
@@ -215,10 +243,12 @@ function PaymentStatusPage() {
             className="rounded-lg border border-slate-200 px-4 py-3 text-sm"
           >
             <p>
-              <span className="font-semibold">Order:</span> {payment.gatewayOrderId}
+              <span className="font-semibold">Order:</span>{" "}
+              {payment.gatewayOrderId}
             </p>
             <p>
-              <span className="font-semibold">Amount:</span> LKR {payment.amount.toFixed(2)}
+              <span className="font-semibold">Amount:</span> LKR{" "}
+              {payment.amount.toFixed(2)}
             </p>
             <p>
               <span className="font-semibold">Status:</span> {payment.status}
@@ -237,21 +267,37 @@ function AppLayout() {
         <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/">
           Payments
         </Link>
-        <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/payment/status">
+        <Link
+          className="rounded bg-white px-3 py-2 shadow-sm"
+          to="/payment/status"
+        >
           Payment status
         </Link>
         <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/symptoms">
           Symptom check
         </Link>
-        <Link className="rounded bg-white px-3 py-2 shadow-sm" to="/symptoms/history">
+        <Link
+          className="rounded bg-white px-3 py-2 shadow-sm"
+          to="/symptoms/history"
+        >
           Symptom history
         </Link>
       </nav>
 
       <Routes>
         <Route path="/" element={<PaymentForm />} />
-        <Route path="/payment/success" element={<PaymentResult title="Payment Successful" tone="text-emerald-600" />} />
-        <Route path="/payment/cancel" element={<PaymentResult title="Payment Cancelled" tone="text-amber-600" />} />
+        <Route
+          path="/payment/success"
+          element={
+            <PaymentResult title="Payment Successful" tone="text-emerald-600" />
+          }
+        />
+        <Route
+          path="/payment/cancel"
+          element={
+            <PaymentResult title="Payment Cancelled" tone="text-amber-600" />
+          }
+        />
         <Route path="/payment/status" element={<PaymentStatusPage />} />
         <Route path="/symptoms" element={<SymptomCheckPage />} />
         <Route path="/symptoms/history" element={<SymptomHistoryPage />} />
