@@ -1,0 +1,79 @@
+# ===========================================================
+#  Notification Service – Deployment + Service
+# ===========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: healthcare
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: your-dockerhub-username/notification-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5005
+          env:
+            - name: PORT
+              value: "5005"
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: notification-mongo-uri
+            - name: RABBITMQ_URI
+              value: amqp://rabbitmq.healthcare.svc.cluster.local
+            - name: EMAIL_SERVICE
+              value: "gmail"
+            - name: EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: email-user
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: email-pass
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5005
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5005
+            initialDelaySeconds: 25
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: healthcare
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 5005
+      targetPort: 5005

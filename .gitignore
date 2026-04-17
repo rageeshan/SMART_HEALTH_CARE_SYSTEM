@@ -137,3 +137,13 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ── Docker / Kubernetes ──────────────────────────────────────
+# Kubernetes secrets file – NEVER commit real credentials
+k8s/secrets.yaml
+
+# Docker build context artefacts
+**/*.dockerignore
+
+# Local override compose files
+docker-compose.override.yml
