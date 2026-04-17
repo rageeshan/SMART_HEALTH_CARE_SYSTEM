@@ -55,9 +55,12 @@ export function Sidebar({ onClose }) {
               Patient
             </div>
             <NavItem to="/patient/dashboard" label="Dashboard" />
+            <NavItem to="/patient/doctors" label="Browse doctors" />
             <NavItem to="/patient/profile/create" label="Create profile" />
             <NavItem to="/patient/profile/edit" label="Edit profile" />
             <NavItem to="/patient/medical-history" label="Medical history" />
+            <NavItem to="/patient/reports" label="My reports" />
+            <NavItem to="/patient/prescriptions" label="Prescriptions" />
           </div>
         ) : null}
 

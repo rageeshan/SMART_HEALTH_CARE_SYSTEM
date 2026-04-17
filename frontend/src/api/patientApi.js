@@ -100,5 +100,37 @@ export const patientApi = {
     const { data } = await patientClient.delete(`/admin/${patientId}`)
     return data
   },
+
+  // Reports (patient uploads)
+  async uploadReport(payload) {
+    const { data } = await patientClient.post('/me/reports', payload)
+    return data
+  },
+  async getMyReports() {
+    const { data } = await patientClient.get('/me/reports')
+    return data
+  },
+  async getReport(reportId) {
+    const { data } = await patientClient.get(`/me/reports/${reportId}`)
+    return data
+  },
+  async deleteReport(reportId) {
+    const { data } = await patientClient.delete(`/me/reports/${reportId}`)
+    return data
+  },
+
+  // Prescriptions
+  async getMyPrescriptions() {
+    const { data } = await patientClient.get('/me/prescriptions')
+    return data
+  },
+  async addPrescription(patientId, payload) {
+    const { data } = await patientClient.post(`/${patientId}/prescriptions`, payload)
+    return data
+  },
+  async getPatientPrescriptions(patientId) {
+    const { data } = await patientClient.get(`/${patientId}/prescriptions`)
+    return data
+  },
 }
 

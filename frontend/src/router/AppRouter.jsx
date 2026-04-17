@@ -15,6 +15,9 @@ import { PatientDashboardPage } from '../pages/patient/PatientDashboardPage.jsx'
 import { PatientProfileCreatePage } from '../pages/patient/PatientProfileCreatePage.jsx'
 import { PatientProfileEditPage } from '../pages/patient/PatientProfileEditPage.jsx'
 import { PatientMedicalHistoryPage } from '../pages/patient/PatientMedicalHistoryPage.jsx'
+import { PatientBrowseDoctorsPage } from '../pages/patient/PatientBrowseDoctorsPage.jsx'
+import { PatientReportsPage } from '../pages/patient/PatientReportsPage.jsx'
+import { PatientPrescriptionsPage } from '../pages/patient/PatientPrescriptionsPage.jsx'
 
 import { DoctorDashboardPage } from '../pages/doctor/DoctorDashboardPage.jsx'
 import { DoctorPatientPage } from '../pages/doctor/DoctorPatientPage.jsx'
@@ -41,6 +44,7 @@ export function AppRouter() {
       <Route element={<RoleProtectedRoute allowedRoles={[ROLE.PATIENT]} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/patient/dashboard" element={<PatientDashboardPage />} />
+          <Route path="/patient/doctors" element={<PatientBrowseDoctorsPage />} />
           <Route
             path="/patient/profile/create"
             element={<PatientProfileCreatePage />}
@@ -53,6 +57,8 @@ export function AppRouter() {
             path="/patient/medical-history"
             element={<PatientMedicalHistoryPage />}
           />
+          <Route path="/patient/reports" element={<PatientReportsPage />} />
+          <Route path="/patient/prescriptions" element={<PatientPrescriptionsPage />} />
         </Route>
       </Route>
 

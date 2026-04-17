@@ -378,3 +378,99 @@ export const verifyDoctor = async (req, res) => {
     });
   }
 };
+
+// Update user details (admin)
+export const updateUser = async (req, res) => {
+  try {
+    const { fullName, email, role } = req.body;
+    const allowedRoles = ["patient", "doctor", "admin"];
+
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (fullName !== undefined) {
+      if (!String(fullName).trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Full name cannot be empty",
+        });
+      }
+      user.fullName = String(fullName).trim();
+    }
+
+    if (email !== undefined) {
+      const normalized = String(email).trim().toLowerCase();
+      if (!normalized) {
+        return res.status(400).json({
+          success: false,
+          message: "Email cannot be empty",
+        });
+      }
+      const conflict = await User.findOne({
+        email: normalized,
+        _id: { $ne: user._id },
+      });
+      if (conflict) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already in use by another account",
+        });
+      }
+      user.email = normalized;
+    }
+
+    if (role !== undefined) {
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role. Allowed roles: patient, doctor, admin",
+        });
+      }
+      // When changing away from doctor reset verification status
+      if (user.role === "doctor" && role !== "doctor") {
+        user.isVerified = false;
+      }
+      user.role = role;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Get all verified doctors (accessible to authenticated patients)
+export const getDoctors = async (req, res) => {
+  try {
+    const doctors = await User.find({
+      role: "doctor",
+      isVerified: true,
+      isActive: true,
+    }).select("fullName email _id createdAt");
+
+    res.status(200).json({
+      success: true,
+      data: doctors,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};

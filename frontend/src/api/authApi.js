@@ -35,5 +35,14 @@ export const authApi = {
     const { data } = await authClient.patch(`/admin/users/${userId}/verify-doctor`)
     return data
   },
+  async updateUser(userId, payload) {
+    const { data } = await authClient.put(`/admin/users/${userId}`, payload)
+    return data
+  },
+  // Patient-accessible
+  async getDoctors() {
+    const { data } = await authClient.get('/doctors')
+    return data
+  },
 }
 

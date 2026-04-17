@@ -46,7 +46,9 @@ export function AdminDashboardPage() {
     )
 
     const active = users.filter((u) => getUserActive(u)).length
-    const doctorsVerified = users.filter((u) => getDoctorVerified(u)).length
+    const doctorsVerified = users.filter(
+      (u) => getUserRole(u) === 'doctor' && getDoctorVerified(u),
+    ).length
     return { total, active, byRole, doctorsVerified }
   }, [users])
 

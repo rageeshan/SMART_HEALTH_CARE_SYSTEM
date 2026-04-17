@@ -8,6 +8,8 @@ import {
   getUserById,
   toggleUserStatus,
   verifyDoctor,
+  updateUser,
+  getDoctors,
 } from "../controllers/authController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -20,6 +22,9 @@ router.post("/register", register);
 router.post("/verify-register-otp", verifyRegisterOtp);
 router.post("/login", login);
 router.post("/verify-login-otp", verifyLoginOtp);
+
+// 🩺 Patient-accessible routes
+router.get("/doctors", protect, allowRoles("patient", "doctor", "admin"), getDoctors);
 
 // 🔐 Admin routes
 router.get("/admin/users", protect, allowRoles("admin"), getAllUsers);
@@ -38,6 +43,13 @@ router.patch(
   protect,
   allowRoles("admin"),
   verifyDoctor
+);
+
+router.put(
+  "/admin/users/:userId",
+  protect,
+  allowRoles("admin"),
+  updateUser
 );
 
 export default router;

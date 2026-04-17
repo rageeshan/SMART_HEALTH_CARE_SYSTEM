@@ -3,10 +3,12 @@ import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { patientApi } from '../../api/patientApi.js'
 import { getApiErrorMessage } from '../../api/error.js'
+import { useAuth } from '../../hooks/useAuth.js'
 import { Badge } from '../../components/ui/Badge.jsx'
 import { Button } from '../../components/ui/Button.jsx'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card.jsx'
 import { EmptyState } from '../../components/ui/EmptyState.jsx'
+import { Input } from '../../components/ui/Input.jsx'
 import { LoadingScreen } from '../../components/ui/LoadingScreen.jsx'
 import { Modal } from '../../components/ui/Modal.jsx'
 import { Table, TBody, TD, TH, THead, TR } from '../../components/ui/Table.jsx'
@@ -31,6 +33,7 @@ function normalizeProfile(data) {
 
 export function DoctorPatientPage() {
   const { patientId } = useParams()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [records, setRecords] = useState([])
@@ -40,6 +43,12 @@ export function DoctorPatientPage() {
   const [editing, setEditing] = useState(null) // record or null
   const [form, setForm] = useState(emptyMedicalRecord)
   const [saving, setSaving] = useState(false)
+
+  // Prescription
+  const [rxOpen, setRxOpen] = useState(false)
+  const [rxForm, setRxForm] = useState({ medication: '', dosage: '', frequency: '', duration: '', instructions: '' })
+  const [rxErrors, setRxErrors] = useState({})
+  const [rxSaving, setRxSaving] = useState(false)
 
   const patientLabel = useMemo(() => patientId, [patientId])
 
@@ -163,6 +172,33 @@ export function DoctorPatientPage() {
     }
   }
 
+  function openRx() {
+    setRxForm({ medication: '', dosage: '', frequency: '', duration: '', instructions: '' })
+    setRxErrors({})
+    setRxOpen(true)
+  }
+
+  async function saveRx() {
+    const errs = {}
+    if (!rxForm.medication.trim()) errs.medication = 'Medication name is required'
+    setRxErrors(errs)
+    if (Object.keys(errs).length) return
+
+    setRxSaving(true)
+    try {
+      await patientApi.addPrescription(patientId, {
+        ...rxForm,
+        doctorName: user?.fullName ?? '',
+      })
+      toast.success('Prescription issued')
+      setRxOpen(false)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
+    } finally {
+      setRxSaving(false)
+    }
+  }
+
   if (loading) return <LoadingScreen title="Loading patient…" />
 
   return (
@@ -225,9 +261,12 @@ export function DoctorPatientPage() {
               {records.length}
             </div>
             <div className="text-sm text-slate-600">Records</div>
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <Button className="w-full" onClick={openAdd}>
                 Add record
+              </Button>
+              <Button className="w-full" variant="outline" onClick={openRx}>
+                💊 Issue prescription
               </Button>
             </div>
           </CardBody>
@@ -313,6 +352,62 @@ export function DoctorPatientPage() {
         }
       >
         <MedicalHistoryForm value={form} onChange={setForm} />
+      </Modal>
+
+      {/* Issue Prescription Modal */}
+      <Modal
+        open={rxOpen}
+        title="Issue prescription"
+        onClose={() => setRxOpen(false)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRxOpen(false)} disabled={rxSaving}>
+              Cancel
+            </Button>
+            <Button onClick={saveRx} disabled={rxSaving}>
+              {rxSaving ? 'Issuing…' : 'Issue prescription'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="Medication *"
+            name="medication"
+            placeholder="e.g., Amoxicillin"
+            value={rxForm.medication}
+            onChange={(e) => setRxForm((p) => ({ ...p, medication: e.target.value }))}
+            error={rxErrors.medication}
+          />
+          <Input
+            label="Dosage"
+            name="dosage"
+            placeholder="e.g., 500 mg"
+            value={rxForm.dosage}
+            onChange={(e) => setRxForm((p) => ({ ...p, dosage: e.target.value }))}
+          />
+          <Input
+            label="Frequency"
+            name="frequency"
+            placeholder="e.g., Twice daily"
+            value={rxForm.frequency}
+            onChange={(e) => setRxForm((p) => ({ ...p, frequency: e.target.value }))}
+          />
+          <Input
+            label="Duration"
+            name="duration"
+            placeholder="e.g., 7 days"
+            value={rxForm.duration}
+            onChange={(e) => setRxForm((p) => ({ ...p, duration: e.target.value }))}
+          />
+          <Input
+            label="Instructions"
+            name="instructions"
+            placeholder="e.g., Take after meals"
+            value={rxForm.instructions}
+            onChange={(e) => setRxForm((p) => ({ ...p, instructions: e.target.value }))}
+          />
+        </div>
       </Modal>
     </div>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { patientApi } from '../../api/patientApi.js'
 import { getApiErrorMessage, isNotFoundError } from '../../api/error.js'
@@ -100,6 +101,7 @@ export function PatientDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* ── Stats row ── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardBody>
@@ -110,7 +112,7 @@ export function PatientDashboardPage() {
               {displayName}
             </div>
             <div className="mt-2 text-sm text-slate-600">
-              Manage your profile and view your medical history securely.
+              Manage your profile, browse doctors, and view your medical history securely.
             </div>
           </CardBody>
         </Card>
@@ -136,6 +138,60 @@ export function PatientDashboardPage() {
         </Card>
       </div>
 
+      {/* ── Quick actions ── */}
+      <Card>
+        <CardHeader>
+          <div className="text-sm font-semibold text-slate-900">Quick actions</div>
+          <div className="text-xs text-slate-500">Everything you need at a glance.</div>
+        </CardHeader>
+        <CardBody>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Browse Doctors */}
+            <div className="flex flex-col gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+              <div className="text-2xl">🩺</div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Browse doctors</div>
+                <div className="mt-0.5 text-xs text-slate-600">
+                  View all verified doctors on the platform.
+                </div>
+              </div>
+              <Link to="/patient/doctors" className="mt-auto">
+                <Button className="w-full" id="btn-browse-doctors">Browse doctors</Button>
+              </Link>
+            </div>
+
+            {/* Medical Reports */}
+            <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <div className="text-2xl">📋</div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">My reports</div>
+                <div className="mt-0.5 text-xs text-slate-600">
+                  Upload and manage your medical reports.
+                </div>
+              </div>
+              <Link to="/patient/reports" className="mt-auto">
+                <Button className="w-full" id="btn-my-reports">View reports</Button>
+              </Link>
+            </div>
+
+            {/* Prescriptions */}
+            <div className="flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+              <div className="text-2xl">💊</div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Prescriptions</div>
+                <div className="mt-0.5 text-xs text-slate-600">
+                  View prescriptions issued by your doctors.
+                </div>
+              </div>
+              <Link to="/patient/prescriptions" className="mt-auto">
+                <Button className="w-full" id="btn-prescriptions">View prescriptions</Button>
+              </Link>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* ── Profile summary ── */}
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold text-slate-900">
@@ -222,4 +278,3 @@ export function PatientDashboardPage() {
     </div>
   )
 }
-
