@@ -84,6 +84,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback((message) => {
     storage.clearToken()
     storage.clearPendingEmail()
+    storage.clearPendingRole()
     setToken(null)
     setRole(null)
     setUser(null)
@@ -94,6 +95,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await authApi.register(payload)
       storage.setPendingEmail(payload?.email ?? res?.email ?? '')
+      if (payload?.role) storage.setPendingRole(String(payload.role).toLowerCase())
       return { ok: true, data: res }
     } catch (err) {
       return { ok: false, message: getApiErrorMessage(err) }

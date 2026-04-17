@@ -14,6 +14,7 @@ export function VerifyRegisterOtpPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState(() => ({
     email: storage.getPendingEmail() ?? '',
+    role: storage.getPendingRole() ?? '',
     otp: '',
   }))
   const [submitting, setSubmitting] = useState(false)
@@ -29,10 +30,13 @@ export function VerifyRegisterOtpPage() {
     }
 
     setSubmitting(true)
-    const res = await verifyRegisterOtp({
+    const payload = {
       email: form.email.trim(),
       otp: form.otp.trim(),
-    })
+    }
+    if (form.role) payload.role = String(form.role).toLowerCase()
+
+    const res = await verifyRegisterOtp(payload)
     setSubmitting(false)
 
     if (!res.ok) {
@@ -42,6 +46,7 @@ export function VerifyRegisterOtpPage() {
 
     toast.success(res.data?.message ?? 'Registration verified. Please login.')
     storage.clearPendingEmail()
+    storage.clearPendingRole()
     navigate('/login', { replace: true })
   }
 
