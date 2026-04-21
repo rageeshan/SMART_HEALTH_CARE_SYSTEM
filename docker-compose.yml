@@ -72,11 +72,11 @@ services:
       - ./services/appointment-service/.env
     environment:
       PORT: 5003
-      AUTH_SERVICE_URL: http://auth-service:5001
-      DOCTOR_SERVICE_URL: http://doctor-service:5004
-      PATIENT_SERVICE_URL: http://patient-service:5002
-      TELEMEDICINE_SERVICE_URL: http://telemedicine-service:5006
-      NOTIFICATION_SERVICE_URL: http://notification-service:5005
+      AUTH_SERVICE_URL: http://auth-service:5001/api/auth
+      DOCTOR_SERVICE_URL: http://doctor-service:5004/api/doctors
+      PATIENT_SERVICE_URL: http://patient-service:5002/api/patients
+      TELEMEDICINE_SERVICE_URL: http://telemedicine-service:5006/api/sessions
+      NOTIFICATION_SERVICE_URL: http://notification-service:5005/api/notifications
     ports:
       - "5003:5003"
     depends_on:
