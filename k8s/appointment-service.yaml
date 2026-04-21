@@ -37,6 +37,16 @@ spec:
                 secretKeyRef:
                   name: healthcare-secrets
                   key: jwt-secret
+            - name: AUTH_SERVICE_URL
+              value: http://auth-service.healthcare.svc.cluster.local:5001
+            - name: DOCTOR_SERVICE_URL
+              value: http://doctor-service.healthcare.svc.cluster.local:5004
+            - name: PATIENT_SERVICE_URL
+              value: http://patient-service.healthcare.svc.cluster.local:5002
+            - name: TELEMEDICINE_SERVICE_URL
+              value: http://telemedicine-service.healthcare.svc.cluster.local:5006
+            - name: NOTIFICATION_SERVICE_URL
+              value: http://notification-service.healthcare.svc.cluster.local:5005
           readinessProbe:
             httpGet:
               path: /health

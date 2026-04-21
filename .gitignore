@@ -144,8 +144,5 @@ vite.config.ts.timestamp-*
 # Kubernetes secrets file – NEVER commit real credentials
 k8s/secrets.yaml
 
-# Docker build context artefacts
-**/*.dockerignore
-
 # Local override compose files
 docker-compose.override.yml
