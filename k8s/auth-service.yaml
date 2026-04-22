@@ -1,6 +1,6 @@
 # ===========================================================
 #  Auth Service – Deployment + Service
-#  Image: your-dockerhub-username/auth-service:latest
+#  Image: auth-service:latest
 #  Replace the image name with your actual Docker Hub image.
 # ===========================================================
 apiVersion: apps/v1
@@ -22,8 +22,8 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: your-dockerhub-username/auth-service:latest
-          imagePullPolicy: Always
+          image: auth-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5001
           env:

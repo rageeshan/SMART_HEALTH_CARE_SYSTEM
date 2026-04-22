@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: telemedicine-service
-          image: your-dockerhub-username/telemedicine-service:latest
-          imagePullPolicy: Always
+          image: telemedicine-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5006
           env:
@@ -33,7 +33,10 @@ spec:
                   name: healthcare-secrets
                   key: telemedicine-mongo-uri
             - name: RABBITMQ_URI
-              value: amqp://rabbitmq.healthcare.svc.cluster.local
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: rabbitmq-uri
           readinessProbe:
             httpGet:
               path: /health

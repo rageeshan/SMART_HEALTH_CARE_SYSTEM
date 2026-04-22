@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: patient-service
-          image: your-dockerhub-username/patient-service:latest
-          imagePullPolicy: Always
+          image: patient-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5002
           env:

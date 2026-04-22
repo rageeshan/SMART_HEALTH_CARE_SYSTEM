@@ -21,6 +21,17 @@ spec:
       containers:
         - name: rabbitmq
           image: rabbitmq:3-management-alpine
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: rabbitmq-user
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: rabbitmq-pass
           ports:
             - containerPort: 5672
             - containerPort: 15672

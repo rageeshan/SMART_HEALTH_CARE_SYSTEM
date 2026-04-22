@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const SYMPTOM_API =
-  import.meta.env.VITE_SYMPTOM_API_URL || "http://localhost:5007/api/symptoms";
+  import.meta.env.VITE_SYMPTOM_BASE_URL ||
+  import.meta.env.VITE_SYMPTOM_API_URL ||
+  "http://localhost:5007/api/symptoms";
 
 export function SymptomCheckPage() {
   const [patientId, setPatientId] = useState("");
