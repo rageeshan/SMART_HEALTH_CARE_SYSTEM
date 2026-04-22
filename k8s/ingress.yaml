@@ -13,7 +13,6 @@ metadata:
   name: healthcare-ingress
   namespace: healthcare
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
 spec:
@@ -62,7 +61,7 @@ spec:
                 port:
                   number: 5005
 
-          - path: /api/telemedicine
+          - path: /api/sessions
             pathType: Prefix
             backend:
               service:

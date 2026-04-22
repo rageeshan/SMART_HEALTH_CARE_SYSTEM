@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: your-dockerhub-username/notification-service:latest
-          imagePullPolicy: Always
+          image: notification-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5005
           env:
@@ -33,7 +33,10 @@ spec:
                   name: healthcare-secrets
                   key: notification-mongo-uri
             - name: RABBITMQ_URI
-              value: amqp://rabbitmq.healthcare.svc.cluster.local
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-secrets
+                  key: rabbitmq-uri
             - name: EMAIL_SERVICE
               value: "gmail"
             - name: EMAIL

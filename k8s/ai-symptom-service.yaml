@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: ai-symptom-service
-          image: your-dockerhub-username/ai-symptom-service:latest
-          imagePullPolicy: Always
+          image: ai-symptom-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5007
           env:

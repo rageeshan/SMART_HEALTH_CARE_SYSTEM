@@ -19,8 +19,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
     ports:
-      - "5672:5672"    # AMQP
-      - "15672:15672"  # Management UI  →  http://localhost:15672  (guest/guest)
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - healthcare-net
     healthcheck:
@@ -72,8 +72,17 @@ services:
       - ./services/appointment-service/.env
     environment:
       PORT: 5003
+      AUTH_SERVICE_URL: http://auth-service:5001/api/auth
+      DOCTOR_SERVICE_URL: http://doctor-service:5004/api/doctors
+      PATIENT_SERVICE_URL: http://patient-service:5002/api/patients
+      TELEMEDICINE_SERVICE_URL: http://telemedicine-service:5006/api/sessions
+      NOTIFICATION_SERVICE_URL: http://notification-service:5005/api/notifications
     ports:
       - "5003:5003"
+    depends_on:
+      - auth-service
+      - doctor-service
+      - patient-service
     networks:
       - healthcare-net
 
@@ -160,8 +169,11 @@ services:
       - ./services/payment-service/.env
     environment:
       PORT: 5008
+      APPOINTMENT_SERVICE_URL: http://appointment-service:5003
     ports:
       - "5008:5008"
+    depends_on:
+      - appointment-service
     networks:
       - healthcare-net
 
@@ -171,10 +183,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_AUTH_BASE_URL: http://localhost:5001/api/auth
-        VITE_PATIENT_BASE_URL: http://localhost:5002/api/patients
-        VITE_SYMPTOM_API_URL: http://localhost:5007/api/symptoms
-        VITE_PAYMENT_API_URL: http://localhost:5008/api/payments
+        VITE_AUTH_BASE_URL: /api/auth
+        VITE_PATIENT_BASE_URL: /api/patients
+        VITE_DOCTOR_BASE_URL: /api/doctors
+        VITE_APPOINTMENT_BASE_URL: /api/appointments
+        VITE_TELEMEDICINE_BASE_URL: /api/sessions
+        VITE_SYMPTOM_BASE_URL: /api/symptoms
+        VITE_PAYMENT_BASE_URL: /api/payments
     container_name: frontend
     restart: unless-stopped
     ports:
@@ -182,6 +197,10 @@ services:
     depends_on:
       - auth-service
       - patient-service
+      - appointment-service
+      - doctor-service
+      - notification-service
+      - telemedicine-service
       - ai-symptom-service
       - payment-service
     networks:

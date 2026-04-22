@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: doctor-service
-          image: your-dockerhub-username/doctor-service:latest
-          imagePullPolicy: Always
+          image: doctor-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5004
           env:

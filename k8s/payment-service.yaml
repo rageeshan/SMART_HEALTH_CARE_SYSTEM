@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: payment-service
-          image: your-dockerhub-username/payment-service:latest
-          imagePullPolicy: Always
+          image: payment-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5008
           env:
@@ -32,16 +32,6 @@ spec:
                 secretKeyRef:
                   name: healthcare-secrets
                   key: payment-mongo-uri
-            - name: PAYHERE_MERCHANT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: healthcare-secrets
-                  key: payhere-merchant-id
-            - name: PAYHERE_MERCHANT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: healthcare-secrets
-                  key: payhere-merchant-secret
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -52,6 +42,10 @@ spec:
                 secretKeyRef:
                   name: healthcare-secrets
                   key: stripe-webhook-secret
+            - name: APPOINTMENT_SERVICE_URL
+              value: http://appointment-service.healthcare.svc.cluster.local:5003
+            - name: FRONTEND_URL
+              value: http://frontend.healthcare.svc.cluster.local
           readinessProbe:
             httpGet:
               path: /health
