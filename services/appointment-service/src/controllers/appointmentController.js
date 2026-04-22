@@ -352,7 +352,21 @@ exports.issuePrescription = async (req, res) => {
     // Forward prescription to patient-service so it appears in patient's Prescriptions tab
     const patientId = String(appointment.patientId);
     const authHeader = req.headers.authorization; // doctor's Bearer token
-    const doctorName = req.user?.fullName || req.user?.name || req.user?.email || 'Doctor';
+    let doctorName = req.user?.fullName || req.user?.name || '';
+    // Token payload may not contain full name; avoid showing email as doctor name.
+    if (!doctorName) {
+      try {
+        const { data } = await axios.get(`${AUTH_SERVICE_URL}/doctors`, {
+          headers: { authorization: req.headers.authorization },
+        });
+        const doctors = Array.isArray(data?.data) ? data.data : [];
+        const doctor = doctors.find((d) => String(d?._id) === String(appointment.doctorId));
+        if (doctor?.fullName) doctorName = doctor.fullName;
+      } catch (nameErr) {
+        console.warn('Doctor name lookup failed:', nameErr?.response?.data?.message ?? nameErr.message);
+      }
+    }
+    if (!doctorName) doctorName = 'Doctor';
     const appointmentWhen = formatAppointmentWhen(appointment);
     try {
       await axios.post(
