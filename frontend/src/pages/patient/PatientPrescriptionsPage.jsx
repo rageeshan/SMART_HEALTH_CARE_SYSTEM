@@ -92,10 +92,12 @@ export function PatientPrescriptionsPage() {
 
                   {/* Footer */}
                   <div className="mt-auto border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span>Dr. {rx.doctorName || 'Your doctor'}</span>
-                    {(rx.issuedAt || rx.createdAt)
-                      ? <span> · {String(rx.issuedAt ?? rx.createdAt).slice(0, 10)}</span>
-                      : null}
+                    <div>Dr. {rx.doctorName || 'Your doctor'}</div>
+                    {rx.doctorEmail ? <div>{rx.doctorEmail}</div> : null}
+                    {rx.appointmentTimeSlot ? <div>Time: {rx.appointmentTimeSlot}</div> : null}
+                    {(rx.appointmentDate || rx.issuedAt || rx.createdAt) ? (
+                      <div>Date: {new Date(rx.appointmentDate ?? rx.issuedAt ?? rx.createdAt).toLocaleDateString()}</div>
+                    ) : null}
                   </div>
                 </div>
               ))}

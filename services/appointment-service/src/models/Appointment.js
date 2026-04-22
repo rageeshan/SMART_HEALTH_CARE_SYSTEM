@@ -45,7 +45,17 @@ const appointmentSchema = new mongoose.Schema({
     roomId: { type: String, default: null },
     meetingUrl: { type: String, default: null },
     status: { type: String, default: null },
-  }
+    joinRequestStatus: {
+      type: String,
+      enum: ['NONE', 'PENDING', 'DOCTOR_JOINED'],
+      default: 'NONE',
+    },
+    patientJoinedAt: { type: Date, default: null },
+    doctorJoinedAt: { type: Date, default: null },
+  },
+  notification: {
+    oneHourReminderSentAt: { type: Date, default: null },
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

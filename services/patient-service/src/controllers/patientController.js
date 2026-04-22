@@ -260,18 +260,36 @@ export const addPrescription = async (req, res) => {
   try {
     const { userId: doctorId, fullName: tokenName } = req.user;
     const { patientId } = req.params;
-    const { medication, dosage, frequency, duration, instructions, doctorName } = req.body;
+    const {
+      medication,
+      dosage,
+      frequency,
+      duration,
+      instructions,
+      doctorName,
+      doctorEmail,
+      appointmentId,
+      appointmentDate,
+      appointmentTimeSlot,
+    } = req.body;
 
     if (!medication || !medication.trim()) {
       return res.status(400).json({ success: false, message: "Medication name is required" });
     }
 
-    const patient = await Patient.findById(patientId);
+    // Support both patient profile _id and auth-service userId.
+    const patient =
+      (await Patient.findById(patientId)) ||
+      (await Patient.findOne({ userId: String(patientId) }));
     if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
 
     patient.prescriptions.push({
       doctorId,
       doctorName: doctorName || tokenName || "",
+      doctorEmail: doctorEmail || "",
+      appointmentId: appointmentId || "",
+      appointmentDate: appointmentDate || null,
+      appointmentTimeSlot: appointmentTimeSlot || "",
       medication: medication.trim(),
       dosage,
       frequency,

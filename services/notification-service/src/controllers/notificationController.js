@@ -4,8 +4,9 @@ const { sendSMS } = require("../services/smsService");
 
 const sendTestNotification = async (req, res) => {
   try {
-    const { appointmentId, userId, email, phone, message } = req.body;
+    const { appointmentId, userId, email, phone, message, subject } = req.body;
     const text = message || "Test notification from notification-service";
+    const emailSubject = subject || "Notification";
 
     if (!email && !phone) {
       return res.status(400).json({ message: "email or phone is required." });
@@ -15,7 +16,7 @@ const sendTestNotification = async (req, res) => {
 
     if (email) {
       try {
-        await sendEmail(email, "Test Notification", text);
+        await sendEmail(email, emailSubject, text);
         logs.push(
           await Notification.create({
             appointmentId,

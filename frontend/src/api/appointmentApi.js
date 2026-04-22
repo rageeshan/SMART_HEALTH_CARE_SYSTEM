@@ -21,5 +21,13 @@ export const appointmentApi = {
     const { data } = await appointmentClient.patch(`/${appointmentId}/prescription`, { prescription })
     return data
   },
+  async requestPatientJoin(appointmentId) {
+    const { data } = await appointmentClient.patch(`/${appointmentId}/telemedicine/patient-join-request`)
+    return data
+  },
+  async markDoctorJoin(appointmentId) {
+    const { data } = await appointmentClient.patch(`/${appointmentId}/telemedicine/doctor-join`)
+    return data
+  },
 }
 

@@ -9,13 +9,14 @@ const TELEMEDICINE_SERVICE_URL =
 const NOTIFICATION_SERVICE_URL =
   process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5005/api/notifications';
 
-async function sendEmailNotification({ appointmentId, userId, email, message }) {
+async function sendEmailNotification({ appointmentId, userId, email, subject, message }) {
   if (!email) return;
   try {
     await axios.post(`${NOTIFICATION_SERVICE_URL}/send-test`, {
       appointmentId,
       userId,
       email,
+      subject,
       message,
     });
   } catch (err) {
@@ -41,6 +42,39 @@ function parseTimeSlot(slot) {
 function toMinutes(hhmm) {
   const [h, m] = String(hhmm).split(':').map(Number);
   return h * 60 + m;
+}
+
+function getAppointmentWindow(dateValue, slot) {
+  const parsedSlot = parseTimeSlot(slot);
+  if (!parsedSlot) return null;
+
+  const [startHour, startMinute] = parsedSlot.start.split(':').map(Number);
+  const [endHour, endMinute] = parsedSlot.end.split(':').map(Number);
+  const day = new Date(dateValue);
+  if (Number.isNaN(day.getTime())) return null;
+
+  // Interpret appointment date + slot in a fixed local offset (default +05:30).
+  // This avoids server timezone drift causing false "too early" / "too late" checks.
+  const offsetMinutes = Number(process.env.APPOINTMENT_TZ_OFFSET_MINUTES ?? 330);
+  const year = day.getUTCFullYear();
+  const monthIndex = day.getUTCMonth();
+  const date = day.getUTCDate();
+
+  const startUtcMs =
+    Date.UTC(year, monthIndex, date, startHour, startMinute, 0, 0) -
+    offsetMinutes * 60 * 1000;
+  const endUtcMs =
+    Date.UTC(year, monthIndex, date, endHour, endMinute, 0, 0) -
+    offsetMinutes * 60 * 1000;
+
+  const startAt = new Date(startUtcMs);
+  const endAt = new Date(endUtcMs);
+
+  return { startAt, endAt };
+}
+
+function formatAppointmentWhen(appointment) {
+  return `${new Date(appointment.date).toDateString()} at ${appointment.timeSlot}`;
 }
 
 // @desc    Book an appointment
@@ -133,7 +167,23 @@ exports.bookAppointment = async (req, res) => {
       appointmentId: appointment._id,
       userId: doctorId,
       email: doctorEmail,
-      message: `New appointment request: ${new Date(date).toDateString()} ${timeSlot}.`,
+      subject: 'New Appointment Request Received',
+      message:
+        `Dear Doctor,\n\n` +
+        `A new appointment request has been submitted for ${new Date(date).toDateString()} at ${timeSlot}.\n` +
+        `Please review and respond from your doctor dashboard at your earliest convenience.\n\n` +
+        `Regards,\nSmart Health Care System`,
+    });
+    await sendEmailNotification({
+      appointmentId: appointment._id,
+      userId: appointment.patientId,
+      email: appointment.patientEmail,
+      subject: 'Appointment Request Submitted Successfully',
+      message:
+        `Dear Patient,\n\n` +
+        `Your appointment request for ${new Date(date).toDateString()} at ${timeSlot} has been submitted successfully.\n` +
+        `You will receive another notification once your doctor approves the appointment.\n\n` +
+        `Regards,\nSmart Health Care System`,
     });
 
     res.status(201).json(appointment);
@@ -242,13 +292,23 @@ exports.updateStatus = async (req, res) => {
           appointmentId: appointment._id,
           userId: appointment.patientId,
           email: appointment.patientEmail,
-          message: `Your appointment was approved for ${when}.${link}`,
+          subject: 'Appointment Approved',
+          message:
+            `Dear Patient,\n\n` +
+            `Your appointment has been approved for ${when}.\n` +
+            `${appointment.telemedicine.meetingUrl ? `Meeting Link: ${appointment.telemedicine.meetingUrl}\n` : ''}` +
+            `Please join on time.\n\nRegards,\nSmart Health Care System`,
         });
         await sendEmailNotification({
           appointmentId: appointment._id,
           userId: appointment.doctorId,
           email: appointment.doctorEmail,
-          message: `Appointment approved for ${when}.${link}`,
+          subject: 'Appointment Approval Confirmed',
+          message:
+            `Dear Doctor,\n\n` +
+            `You have approved the appointment scheduled for ${when}.\n` +
+            `${appointment.telemedicine.meetingUrl ? `Meeting Link: ${appointment.telemedicine.meetingUrl}\n` : ''}` +
+            `You can manage this session from your dashboard.\n\nRegards,\nSmart Health Care System`,
         });
       } catch (err) {
         console.warn('Telemedicine session create failed:', err?.response?.data?.message ?? err.message);
@@ -292,11 +352,18 @@ exports.issuePrescription = async (req, res) => {
     // Forward prescription to patient-service so it appears in patient's Prescriptions tab
     const patientId = String(appointment.patientId);
     const authHeader = req.headers.authorization; // doctor's Bearer token
+    const doctorName = req.user?.fullName || req.user?.name || req.user?.email || 'Doctor';
+    const appointmentWhen = formatAppointmentWhen(appointment);
     try {
       await axios.post(
         `${PATIENT_SERVICE_URL}/${patientId}/prescriptions`,
         {
           medication: prescription,
+          doctorName,
+          doctorEmail: appointment.doctorEmail || '',
+          appointmentId: String(appointment._id),
+          appointmentDate: appointment.date,
+          appointmentTimeSlot: appointment.timeSlot,
           instructions: `Appointment ID: ${appointment._id}`,
         },
         { headers: { Authorization: authHeader } }
@@ -305,6 +372,24 @@ exports.issuePrescription = async (req, res) => {
       // Non-fatal: log but don't fail the appointment update
       console.error('Failed to forward prescription to patient-service:', fwdErr?.response?.data?.message || fwdErr.message);
     }
+
+    // Notify patient by email with prescription details
+    await sendEmailNotification({
+      appointmentId: appointment._id,
+      userId: appointment.patientId,
+      email: appointment.patientEmail,
+      subject: 'New Prescription Issued',
+      message:
+        `Dear Patient,\n\n` +
+        `Your doctor has issued a new prescription for your recent appointment.\n` +
+        `Doctor: ${doctorName}\n` +
+        `${appointment.doctorEmail ? `Doctor Email: ${appointment.doctorEmail}\n` : ''}` +
+        `Appointment: ${appointmentWhen}\n` +
+        `Prescription: ${prescription}\n` +
+        `Appointment ID: ${appointment._id}\n\n` +
+        `You can also view this in your Patient Dashboard > Prescriptions section.\n\n` +
+        `Regards,\nSmart Health Care System`,
+    });
 
     res.status(200).json(appointment);
   } catch (error) {
@@ -329,8 +414,210 @@ exports.updatePaymentStatus = async (req, res) => {
     appointment.paymentStatus = paymentStatus;
     await appointment.save();
 
+    if (String(paymentStatus).toLowerCase() === 'paid') {
+      const when = formatAppointmentWhen(appointment);
+      await sendEmailNotification({
+        appointmentId: appointment._id,
+        userId: appointment.patientId,
+        email: appointment.patientEmail,
+        subject: 'Payment Confirmation Received',
+        message:
+          `Dear Patient,\n\n` +
+          `Your payment for appointment ${appointment._id} has been received successfully.\n` +
+          `Appointment Time: ${when}\n\n` +
+          `Regards,\nSmart Health Care System`,
+      });
+      await sendEmailNotification({
+        appointmentId: appointment._id,
+        userId: appointment.doctorId,
+        email: appointment.doctorEmail,
+        subject: 'Patient Payment Completed',
+        message:
+          `Dear Doctor,\n\n` +
+          `Payment has been completed by the patient for appointment ${appointment._id}.\n` +
+          `Appointment Time: ${when}\n\n` +
+          `Regards,\nSmart Health Care System`,
+      });
+    }
+
     return res.status(200).json(appointment);
   } catch (error) {
     return res.status(500).json({ message: 'Server Error', error: error.message });
   }
+};
+
+// @desc    Patient requests telemedicine join (time-gated)
+// @route   PATCH /api/appointments/:id/telemedicine/patient-join-request
+// @access  Private (Patient)
+exports.requestPatientJoin = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+
+    if (String(appointment.patientId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: 'Not authorized for this appointment' });
+    }
+
+    const appointmentStatus = String(appointment.status).toUpperCase();
+    if (appointmentStatus === 'COMPLETED' || appointmentStatus === 'CANCELLED') {
+      return res.status(409).json({ message: 'This session has already ended.' });
+    }
+    if (appointmentStatus === 'REJECTED') {
+      return res.status(400).json({ message: 'This appointment was rejected.' });
+    }
+    if (appointmentStatus !== 'APPROVED') {
+      return res.status(400).json({ message: 'Appointment is not approved yet.' });
+    }
+
+    if (!appointment.telemedicine?.meetingUrl) {
+      return res.status(400).json({ message: 'Meeting link not available yet.' });
+    }
+
+    const window = getAppointmentWindow(appointment.date, appointment.timeSlot);
+    if (!window) {
+      return res.status(400).json({ message: 'Invalid appointment time slot configuration.' });
+    }
+
+    const now = new Date();
+    const openAt = new Date(window.startAt.getTime() - 15 * 60 * 1000);
+    const closeAt = new Date(window.endAt.getTime() + 30 * 60 * 1000);
+
+    if (now < openAt) {
+      return res.status(400).json({
+        message: 'You can join only 15 minutes before the appointment start time.',
+      });
+    }
+
+    if (now > closeAt) {
+      return res.status(400).json({
+        message: 'This appointment join window has ended.',
+      });
+    }
+
+    appointment.telemedicine = {
+      ...(appointment.telemedicine || {}),
+      joinRequestStatus: 'PENDING',
+      patientJoinedAt: now,
+    };
+    await appointment.save();
+
+    const when = `${new Date(appointment.date).toDateString()} ${appointment.timeSlot}`;
+    await sendEmailNotification({
+      appointmentId: appointment._id,
+      userId: appointment.doctorId,
+      email: appointment.doctorEmail,
+      subject: 'Patient Joined Telemedicine Session',
+      message:
+        `Dear Doctor,\n\n` +
+        `The patient has joined the telemedicine session and is currently waiting.\n` +
+        `Appointment Time: ${when}\n` +
+        `${appointment.telemedicine?.meetingUrl ? `Meeting Link: ${appointment.telemedicine.meetingUrl}\n` : ''}` +
+        `Please join the session from your dashboard.\n\nRegards,\nSmart Health Care System`,
+    });
+
+    return res.status(200).json({
+      message: 'Join request sent to doctor. Please join now.',
+      appointment,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Doctor marks telemedicine join
+// @route   PATCH /api/appointments/:id/telemedicine/doctor-join
+// @access  Private (Doctor)
+exports.markDoctorJoin = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+
+    if (String(appointment.doctorId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: 'Not authorized for this appointment' });
+    }
+
+    appointment.telemedicine = {
+      ...(appointment.telemedicine || {}),
+      joinRequestStatus: 'DOCTOR_JOINED',
+      doctorJoinedAt: new Date(),
+    };
+    await appointment.save();
+
+    return res.status(200).json({
+      message: 'Doctor join recorded.',
+      appointment,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+async function sendOneHourReminders() {
+  const now = new Date();
+  const lookAhead = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+  const appointments = await Appointment.find({
+    status: 'APPROVED',
+    'notification.oneHourReminderSentAt': null,
+    date: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000), $lte: lookAhead },
+  }).limit(200);
+
+  for (const appointment of appointments) {
+    const window = getAppointmentWindow(appointment.date, appointment.timeSlot);
+    if (!window) continue;
+
+    const msUntilStart = window.startAt.getTime() - now.getTime();
+    const withinReminderWindow =
+      msUntilStart <= 60 * 60 * 1000 && msUntilStart >= 45 * 60 * 1000;
+    if (!withinReminderWindow) continue;
+
+    const when = formatAppointmentWhen(appointment);
+    await sendEmailNotification({
+      appointmentId: appointment._id,
+      userId: appointment.patientId,
+      email: appointment.patientEmail,
+      subject: 'Reminder: Appointment in 1 Hour',
+      message:
+        `Dear Patient,\n\n` +
+        `This is a reminder that your appointment is scheduled in approximately 1 hour.\n` +
+        `Appointment Time: ${when}\n` +
+        `${appointment.telemedicine?.meetingUrl ? `Meeting Link: ${appointment.telemedicine.meetingUrl}\n` : ''}` +
+        `Please be ready to join on time.\n\nRegards,\nSmart Health Care System`,
+    });
+    await sendEmailNotification({
+      appointmentId: appointment._id,
+      userId: appointment.doctorId,
+      email: appointment.doctorEmail,
+      subject: 'Reminder: Appointment in 1 Hour',
+      message:
+        `Dear Doctor,\n\n` +
+        `This is a reminder that you have an appointment scheduled in approximately 1 hour.\n` +
+        `Appointment Time: ${when}\n` +
+        `${appointment.telemedicine?.meetingUrl ? `Meeting Link: ${appointment.telemedicine.meetingUrl}\n` : ''}` +
+        `Please join promptly from your dashboard.\n\nRegards,\nSmart Health Care System`,
+    });
+
+    appointment.notification = {
+      ...(appointment.notification || {}),
+      oneHourReminderSentAt: new Date(),
+    };
+    await appointment.save();
+  }
+}
+
+exports.startReminderScheduler = () => {
+  const enabled = process.env.ENABLE_APPOINTMENT_REMINDERS !== 'false';
+  if (!enabled) {
+    console.log('Appointment reminder scheduler is disabled');
+    return;
+  }
+
+  const intervalMs = Number(process.env.APPOINTMENT_REMINDER_INTERVAL_MS || 60000);
+  setInterval(() => {
+    sendOneHourReminders().catch((error) => {
+      console.error('Appointment reminder job failed:', error.message);
+    });
+  }, intervalMs);
+
+  console.log('Appointment reminder scheduler started');
 };

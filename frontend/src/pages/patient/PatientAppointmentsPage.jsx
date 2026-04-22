@@ -23,6 +23,14 @@ function statusVariant(status) {
   return 'warning'
 }
 
+function paymentVariant(paymentStatus) {
+  const s = String(paymentStatus || 'pending').toLowerCase()
+  if (s === 'paid') return 'success'
+  if (s === 'failed') return 'danger'
+  if (s === 'refunded') return 'info'
+  return 'warning'
+}
+
 export function PatientAppointmentsPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -52,6 +60,7 @@ export function PatientAppointmentsPage() {
 
     setJoiningId(appointmentId)
     try {
+      await appointmentApi.requestPatientJoin(appointmentId)
       const session = await telemedicineApi.joinSession(appointmentId)
       const meetingUrl =
         session?.meetingUrl ?? appointment?.telemedicine?.meetingUrl ?? null
@@ -62,6 +71,8 @@ export function PatientAppointmentsPage() {
       }
 
       window.open(meetingUrl, '_blank', 'noopener,noreferrer')
+      toast.success('Join request sent to doctor.')
+      await load()
     } catch (err) {
       toast.error(getApiErrorMessage(err))
     } finally {
@@ -110,6 +121,9 @@ export function PatientAppointmentsPage() {
                   a?.doctorId?.name ?? a?.doctor?.name ?? 'Doctor'
                 const doctorEmail =
                   a?.doctorId?.email ?? a?.doctor?.email ?? null
+                const isSessionEnded =
+                  String(a?.status ?? '').toUpperCase() === 'COMPLETED' ||
+                  String(a?.telemedicine?.status ?? '').toLowerCase() === 'ended'
 
                 return (
                   <div
@@ -127,9 +141,14 @@ export function PatientAppointmentsPage() {
                           </div>
                         ) : null}
                       </div>
-                      <Badge variant={statusVariant(a.status)}>
-                        {String(a.status ?? 'PENDING')}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant={statusVariant(a.status)}>
+                          {String(a.status ?? 'PENDING')}
+                        </Badge>
+                        <Badge variant={paymentVariant(a.paymentStatus)}>
+                          Payment: {String(a.paymentStatus ?? 'pending').toUpperCase()}
+                        </Badge>
+                      </div>
                     </div>
 
                     <div className="space-y-1 text-sm text-slate-700">
@@ -166,7 +185,13 @@ export function PatientAppointmentsPage() {
                       </button>
                     ) : null}
 
-                    {a?.telemedicine?.meetingUrl ? (
+                    {a?.telemedicine?.meetingUrl && isSessionEnded ? (
+                      <div className="mt-auto rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                        Session ended
+                      </div>
+                    ) : null}
+
+                    {a?.telemedicine?.meetingUrl && !isSessionEnded ? (
                       <Button
                         className="mt-auto"
                         onClick={() => joinCall(a)}

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const { startReminderScheduler } = require('./controllers/appointmentController');
 
 // Load env vars
 dotenv.config();
@@ -23,4 +24,7 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'UP' }));
 
 const PORT = process.env.PORT || 5004;
 
-app.listen(PORT, console.log(`Appointment Service running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Appointment Service running on port ${PORT}`);
+  startReminderScheduler();
+});

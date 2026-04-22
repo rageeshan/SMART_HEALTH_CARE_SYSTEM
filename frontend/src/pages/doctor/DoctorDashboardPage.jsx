@@ -55,6 +55,7 @@ export function DoctorDashboardPage() {
   const [endingAppointmentId, setEndingAppointmentId] = useState(null)
   const [rxModal, setRxModal] = useState(null)
   const [rxText, setRxText] = useState('')
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const displayName = useMemo(() => {
     return getUserDisplayName(user, 'Doctor')
@@ -91,14 +92,17 @@ export function DoctorDashboardPage() {
     loadDoctorProfile()
   }, [])
 
-  async function loadAppointments() {
+  async function loadAppointments(options = {}) {
+    const { silent = false } = options
     setAppointmentsLoading(true)
     try {
       const res = await appointmentApi.getDoctorAppointments()
       const list = res?.data ?? res?.appointments ?? res ?? []
       setAppointments(Array.isArray(list) ? list : [])
     } catch (err) {
-      toast.error(getApiErrorMessage(err))
+      if (!silent) {
+        toast.error(getApiErrorMessage(err))
+      }
       setAppointments([])
     } finally {
       setAppointmentsLoading(false)
@@ -107,6 +111,20 @@ export function DoctorDashboardPage() {
 
   useEffect(() => {
     loadAppointments()
+  }, [])
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      loadAppointments({ silent: true })
+    }, 10000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 30000)
+    return () => clearInterval(timer)
   }, [])
 
   const groupedAvailability = useMemo(() => {
@@ -240,6 +258,30 @@ export function DoctorDashboardPage() {
     return 'warning'
   }
 
+  function paymentVariant(paymentStatus) {
+    const s = String(paymentStatus || 'pending').toLowerCase()
+    if (s === 'paid') return 'success'
+    if (s === 'failed') return 'danger'
+    if (s === 'refunded') return 'info'
+    return 'warning'
+  }
+
+  function isPatientWaiting(appointment) {
+    const requestStatus = String(appointment?.telemedicine?.joinRequestStatus ?? '').toUpperCase()
+    if (requestStatus !== 'PENDING') return false
+
+    const patientJoinedAtRaw = appointment?.telemedicine?.patientJoinedAt
+    if (!patientJoinedAtRaw) return false
+
+    const patientJoinedAtMs = new Date(patientJoinedAtRaw).getTime()
+    if (Number.isNaN(patientJoinedAtMs)) return false
+
+    // Keep "waiting" visible for a short period after patient requests join.
+    // If patient does not continue, the UI falls back to normal Join/End actions.
+    const WAITING_VISIBILITY_MS = 10 * 60 * 1000
+    return nowMs - patientJoinedAtMs <= WAITING_VISIBILITY_MS
+  }
+
   async function setStatus(appointmentId, status) {
     setAppointmentsBusy(true)
     try {
@@ -279,6 +321,7 @@ export function DoctorDashboardPage() {
 
     setJoiningAppointmentId(appointmentId)
     try {
+      await appointmentApi.markDoctorJoin(appointmentId)
       const session = await telemedicineApi.joinSession(appointmentId)
       const meetingUrl =
         session?.meetingUrl ?? appointment?.telemedicine?.meetingUrl ?? null
@@ -358,6 +401,7 @@ export function DoctorDashboardPage() {
             <div className="space-y-3">
               {appointments.map((a) => {
                 const id = a._id ?? a.id
+                const patientWaiting = isPatientWaiting(a)
                 const dateLabel = a.date
                   ? new Date(a.date).toLocaleDateString('en-GB', {
                       day: '2-digit',
@@ -396,13 +440,22 @@ export function DoctorDashboardPage() {
                             </div>
                           ) : (
                             <div className="mt-2 flex flex-wrap gap-2">
+                              {patientWaiting ? (
+                                <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                                  Patient is waiting to join
+                                </span>
+                              ) : null}
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => joinCall(a)}
                                 disabled={joiningAppointmentId === id}
                               >
-                                {joiningAppointmentId === id ? 'Joining…' : 'Join call'}
+                                {joiningAppointmentId === id
+                                  ? 'Joining…'
+                                  : patientWaiting
+                                    ? 'Accept & join call'
+                                    : 'Join call'}
                               </Button>
                               <Button
                                 size="sm"
@@ -420,6 +473,9 @@ export function DoctorDashboardPage() {
                       <div className="flex flex-col items-end gap-2">
                         <Badge variant={statusVariant(a.status)}>
                           {String(a.status ?? 'PENDING')}
+                        </Badge>
+                        <Badge variant={paymentVariant(a.paymentStatus)}>
+                          Payment: {String(a.paymentStatus ?? 'pending').toUpperCase()}
                         </Badge>
                         <div className="flex flex-wrap gap-2">
                           {String(a.status ?? '').toUpperCase() === 'PENDING' ? (

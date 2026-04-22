@@ -40,6 +40,10 @@ const prescriptionSchema = new mongoose.Schema(
   {
     doctorId: { type: String, required: true, trim: true },
     doctorName: { type: String, trim: true, default: "" },
+    doctorEmail: { type: String, trim: true, default: "" },
+    appointmentId: { type: String, trim: true, default: "" },
+    appointmentDate: { type: Date, default: null },
+    appointmentTimeSlot: { type: String, trim: true, default: "" },
     medication: { type: String, required: true, trim: true },
     dosage: { type: String, trim: true, default: "" },
     frequency: { type: String, trim: true, default: "" },
